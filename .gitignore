@@ -1,0 +1,21 @@
+# go
+/adj
+/dist/
+
+# coverage (mise run test)
+coverage/
+
+# prettier / markdownlint
+node_modules/
+
+# local cue work
+work/
+*.db
+!internal/sqlcipher/testdata/*.db
+
+# os
+.DS_Store
+
+# claude
+.claude/plans/
+*.local.*

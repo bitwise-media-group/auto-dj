@@ -1,0 +1,228 @@
+<!--
+ Copyright 2026 BitWise Media Group Ltd
+ SPDX-License-Identifier: MIT
+-->
+
+<meta charset="utf-8">
+<title>__TITLE__ Set</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a running order down the page. Tracks are rows; between each pair sits a transition
+   deck with a play button and a two-lane timeline (outgoing above, incoming below) like a mixer view */
+:root{
+  --bg:#f2f3f5; --panel:#ffffff; --fg:#15171c; --muted:#5f6675; --line:#d8dce3; --lane:#eceef2;
+  --out:#2f6fd6; --in:#c2410c; --swap:#7c3aed; --bass:#d48600; --filter:#660099; --warn:#9a5b00; --warnbg:#fff3dc; --ok:#1f8a4c;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0f12; --panel:#161a1f; --fg:#e8ebf0; --muted:#8d96a5; --line:#272c34; --lane:#1e2329;
+  --out:#5b95ff; --in:#ff8a4c; --swap:#a78bfa; --bass:#ffa500; --filter:#b36bff; --warn:#ffc266; --warnbg:#2a2113; --ok:#4ade80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0f12; --panel:#161a1f; --fg:#e8ebf0; --muted:#8d96a5; --line:#272c34; --lane:#1e2329;
+  --out:#5b95ff; --in:#ff8a4c; --swap:#a78bfa; --bass:#ffa500; --filter:#b36bff; --warn:#ffc266; --warnbg:#2a2113; --ok:#4ade80; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:8px}
+h1{font-family:var(--display);font-weight:700;font-size:2.3rem;margin:0;letter-spacing:.01em;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:68ch}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-size:.9rem;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.track{display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;gap:12px;align-items:center;background:var(--panel);border-radius:6px;padding:12px 14px}
+.num{font-family:var(--display);font-size:1.6rem;font-weight:700;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.ti{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cues{display:flex;flex-wrap:wrap;gap:4px 12px;font-family:var(--mono);font-size:.75rem;color:var(--muted);margin-top:2px}
+.cues b{font-family:var(--display);font-size:.8rem;color:var(--fg)}
+.meta{font-family:var(--mono);font-size:.8rem;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.meta .key{font-family:var(--display);font-size:1.15rem;font-weight:600;color:var(--fg);display:block}
+.warn{grid-column:2 / -1;font-size:.82rem;color:var(--warn);background:var(--warnbg);border-radius:4px;padding:4px 8px}
+.tr{margin-left:2.4rem;border-left:2px dashed var(--line);padding:6px 0 6px 18px;display:flex;flex-direction:column;gap:6px}
+.deck{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+.play{width:44px;height:44px;border-radius:50%;border:none;background:var(--fg);color:var(--bg);cursor:pointer;display:grid;place-items:center}
+.play:focus-visible,.tl:focus-visible{outline:2px solid var(--swap);outline-offset:3px}
+.play svg{width:16px;height:16px;fill:currentColor}
+.tl{cursor:pointer;min-width:0}
+.tl svg{display:block;width:100%;height:auto}
+.info{font-family:var(--mono);font-size:.74rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px;font-variant-numeric:tabular-nums}
+.na{font-size:.85rem;color:var(--muted)}
+.mixhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:4px}
+.go{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:999px;background:var(--fg);color:var(--bg);font-family:var(--display);font-weight:600;font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;padding:9px 18px 9px 14px;cursor:pointer}
+.go svg{width:14px;height:14px;fill:currentColor}
+.mixmeta{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.num.from{border:none;background:none;cursor:pointer;padding:0;font:inherit;font-family:var(--display);font-size:1.6rem;font-weight:700;color:var(--muted);text-align:right}
+.num.from:hover,.num.from:focus-visible{color:var(--fg)}
+.num.from:focus-visible,.go:focus-visible,.mixbar .play:focus-visible,.ov:focus-visible{outline:2px solid var(--swap);outline-offset:3px}
+.track.now{box-shadow:inset 3px 0 0 var(--in)}
+.track.now .num{color:var(--in)}
+.mixbar{position:sticky;bottom:0;z-index:2;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -6px 18px rgba(0,0,0,.08);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.mixbar[hidden]{display:none}
+.mixbar .in{max-width:980px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;align-items:center}
+.np{display:flex;gap:10px;align-items:baseline;min-width:0;font-variant-numeric:tabular-nums}
+.np .ti{font-weight:500}
+.np .clock{margin-left:auto;font-family:var(--mono);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.np .step{font-family:var(--display);font-size:.85rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.ov{grid-column:1 / -1;cursor:pointer}
+.ov svg{display:block;width:100%;height:auto}
+@media (max-width:640px){.track{grid-template-columns:1.8rem minmax(0,1fr)}.meta{grid-column:2;text-align:left}.meta .key{display:inline;margin-right:8px}.tr{margin-left:0.9rem}}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+<div class="wrap">
+  <header>
+    <h1 id="h"></h1>
+    <p class="lede">Running order with the set cues. Play full set runs the whole set from the original tracks, mixed on these cues; tap a track number to start from there. Press play on a transition to hear just that one: the outgoing track plays from 8 beats before its OUT (G), the next track comes in at its IN (E), beat-matched to the outgoing tempo and fading in over 8 beats. At the bass swap the bass moves across. The outgoing track then leaves on its FILTER (a low-pass sweep to silence over 8 beats, then a 4-beat fade) or CUT, else it fades out over 8 beats from the bass swap. On a SYNC the next track comes in at full volume, and tracks follow their JUMPs.</p>
+    <div class="mixhead" id="mixhead" hidden><button class="go" id="go" type="button"><svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg><span>Play full set</span></button><span class="mixmeta" id="mixmeta"></span></div>
+    <div class="legend"><span><i style="background:var(--out)"></i>Outgoing</span><span><i style="background:var(--in)"></i>Incoming</span><span><i style="background:var(--bass)"></i>Bass swap</span><span><i style="background:var(--filter)"></i>Filter</span><span>Ticks: bars · tall ticks: 16-beat phrases</span></div>
+  </header>
+  <div id="list" style="display:flex;flex-direction:column;gap:6px"></div>
+</div>
+<div class="mixbar" id="mixbar" hidden><div class="in">
+  <button class="play" id="mixplay" type="button" aria-label="Play full set"></button>
+  <div class="np"><span class="step" id="npn"></span><span class="ti" id="npt"></span><span class="clock" id="npc"></span></div>
+  <div class="ov" id="ov" tabindex="0" role="slider" aria-label="Seek in the full set" aria-valuemin="0"></div>
+  <audio id="mixaudio" preload="none"></audio>
+</div></div>
+<script>
+const D = __DATA__;
+document.getElementById('h').textContent = D.playlist;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mmss=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const PLAY='<svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg>', PAUSE='<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>';
+function lanes(p){
+  const W=1000,H=96,x=t=>t/p.dur*W, laneA=[8,40], laneB=[52,84];
+  let s=`<svg viewBox="0 0 ${W} ${H+14}" role="img" aria-label="Transition timeline">`;
+  s+=`<rect x="0" y="${laneA[0]}" width="${W}" height="32" fill="var(--lane)"/><rect x="0" y="${laneB[0]}" width="${W}" height="32" fill="var(--lane)"/>`;
+  // ticks: every bar (4 beats) from the G point, tall every 16
+  for(let k=-8;;k+=4){const t=p.b_offset+k*p.beat_s;if(t>p.dur)break;if(t<0)continue;const tall=((k%16)+16)%16===0;
+    s+=`<line x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="${tall?2:H-4}" y2="${H+2}" stroke="var(--line)" stroke-width="${tall?1.5:1}"/>`}
+  // gain envelopes
+  const a=[[0,laneA[0]],[x(p.fade_out[0]),laneA[0]],[x(p.fade_out[1]),laneA[1]],[0,laneA[1]]];
+  s+=`<polygon points="${a.map(q=>q.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="var(--out)" opacity=".35"/>`;
+  const b=[[x(p.fade_in[0]),laneB[1]],[x(p.fade_in[1]),laneB[0]],[W,laneB[0]],[W,laneB[1]]];
+  s+=`<polygon points="${b.map(q=>q.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="var(--in)" opacity=".35"/>`;
+  // bass strips: outgoing until the swap, incoming after it
+  s+=`<rect x="0" y="${laneA[1]-6}" width="${x(p.swap_t).toFixed(1)}" height="6" fill="var(--out)"/>`;
+  s+=`<rect x="${x(p.swap_t).toFixed(1)}" y="${laneB[1]-6}" width="${(W-x(p.swap_t)).toFixed(1)}" height="6" fill="var(--in)"/>`;
+  // markers
+  s+=`<line x1="${x(p.b_offset).toFixed(1)}" x2="${x(p.b_offset).toFixed(1)}" y1="${laneA[0]}" y2="${laneB[1]}" stroke="var(--fg)" stroke-width="1.5"/>`;
+  s+=`<text x="${(x(p.b_offset)+4).toFixed(1)}" y="${laneA[0]+12}" font-size="12" font-family="Barlow Condensed,sans-serif" fill="var(--fg)">G ${esc(p.g_time)}</text>`;
+  s+=`<text x="${(x(p.b_offset)+4).toFixed(1)}" y="${laneB[0]+12}" font-size="12" font-family="Barlow Condensed,sans-serif" fill="var(--fg)">E ${esc(p.e_time)}</text>`;
+  s+=`<line x1="${x(p.swap_t).toFixed(1)}" x2="${x(p.swap_t).toFixed(1)}" y1="${laneA[0]-4}" y2="${laneB[1]+4}" stroke="var(--bass)" stroke-width="2.5"/>`;
+  s+=`<text x="${(x(p.swap_t)+4).toFixed(1)}" y="${H+12}" font-size="12" font-family="Barlow Condensed,sans-serif" fill="var(--bass)">BASS SWAP${p.estimated_swap?' (estimated)':''}</text>`;
+  if(p.filter_t){const [f0,f1]=p.filter_t.map(x), near=Math.abs(f0-x(p.swap_t))<90; // label left of the line when it would hit BASS SWAP
+    s+=`<rect x="${f0.toFixed(1)}" y="${laneA[0]}" width="${Math.max(0,f1-f0).toFixed(1)}" height="32" fill="var(--filter)" opacity=".22"/>`;
+    s+=`<line x1="${f0.toFixed(1)}" x2="${f0.toFixed(1)}" y1="${laneA[0]-4}" y2="${laneA[1]+4}" stroke="var(--filter)" stroke-width="2.5"/>`;
+    s+=`<text x="${(near?f0-4:f0+4).toFixed(1)}" y="${H+12}" text-anchor="${near?'end':'start'}" font-size="12" font-family="Barlow Condensed,sans-serif" fill="var(--filter)">FILTER</text>`;}
+  (p.jumps||[]).forEach(([k,t])=>{const L=k==='a'?laneA:laneB;
+    s+=`<line x1="${x(t).toFixed(1)}" x2="${x(t).toFixed(1)}" y1="${L[0]}" y2="${L[1]}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+    s+=`<text x="${(x(t)+4).toFixed(1)}" y="${L[1]-9}" font-size="11" font-family="Barlow Condensed,sans-serif" fill="var(--fg)">JUMP</text>`;});
+  s+=`<line class="ph" x1="0" x2="0" y1="0" y2="${H+4}" stroke="var(--fg)" stroke-width="2" opacity="0"/>`;
+  return s+'</svg>';
+}
+const list=document.getElementById('list');
+let html='';
+D.tracks.forEach((t,i)=>{
+  const cues=[t.E?`<span><b>E</b> ${esc(t.E[0])} ${esc(t.E[1])}</span>`:'',    ...(t.markers||[]).map(m=>`<span><b>${m[0].startsWith('BASS SWAP')?'◆':'◇'}</b> ${esc(m[0])} ${esc(m[1])}${m[2]!=='existing'?` (${m[2]==='new'?'new':'renamed'})`:''}</span>`),
+    t.G?`<span><b>G</b> ${esc(t.G[0])} ${esc(t.G[1])}</span>`:'',t.exit?`<span><b>⤓</b> out on ${esc(t.exit[0])} ${esc(t.exit[1])}</span>`:''].join('');
+  const mt=D.mix&&D.mix.tracks.find(q=>q.n===t.n&&!q.missing);
+  html+=`<div class="track" data-n="${t.n}">${mt?`<button class="num from" type="button" data-n="${t.n}" aria-label="Play the set from track ${t.n}" title="Play the set from here">${t.n}</button>`:`<div class="num">${t.n}</div>`}<div style="min-width:0"><div class="ti" title="${esc(t.title)}">${esc(t.title)}</div><div class="cues">${cues}</div></div>
+    <div class="meta"><span class="key">${esc(t.key||'?')}</span>${t.bpm?Number(t.bpm).toFixed(t.bpm%1?2:0)+' BPM':''}</div>
+    ${t.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join('')}</div>`;
+  const p=D.pairs.find(q=>q.i===i);
+  if(p){
+    if(!p.file){html+=`<div class="tr"><div class="na">${esc(p.reason)}</div></div>`;}
+    else html+=`<div class="tr"><div class="deck"><button class="play" data-i="${i}" aria-label="Play transition ${t.n} to ${t.n+1}">${PLAY}</button>
+      <div class="tl" data-i="${i}" tabindex="0" aria-label="Seek within transition">${lanes(p)}</div></div>
+      <div class="info"><span>${mmss(p.dur)} preview</span>${p.sync?'<span>SYNC: in at full volume</span>':''}<span>out on ${esc({filter:'FILTER',cut:'CUT',fade:'fade'}[p.exit]||p.exit)}</span><span>incoming stretched ×${p.tempo.toFixed(3)} to ${Number(p.bpm).toFixed(p.bpm%1?2:0)} BPM</span><span>swap ${esc(p.swap_time)} in track ${t.n+1}</span><span class="t" data-i="${i}">0:00</span></div>
+      <audio preload="none" src="${esc(p.file)}" data-i="${i}"></audio></div>`;
+  }
+});
+list.innerHTML=html;
+let current=null,raf=null;
+function tick(){
+  if(!current)return;
+  const p=D.pairs.find(q=>q.i==current.dataset.i), wrap=document.querySelector(`.tl[data-i="${current.dataset.i}"]`);
+  const ph=wrap.querySelector('.ph'), x=(current.currentTime/p.dur*1000).toFixed(1);
+  ph.setAttribute('x1',x);ph.setAttribute('x2',x);ph.setAttribute('opacity','1');
+  document.querySelector(`.t[data-i="${current.dataset.i}"]`).textContent=mmss(current.currentTime)+' / '+mmss(p.dur);
+  raf=requestAnimationFrame(tick);
+}
+function stop(){ if(current){current.pause();document.querySelector(`.play[data-i="${current.dataset.i}"]`).innerHTML=PLAY;} cancelAnimationFrame(raf); }
+// ---- full set: one rendered mix of the original tracks (set.mp3), with an overview strip
+const M=D.mix, mx=document.getElementById('mixaudio');
+const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${x}`:`${m}:${x}`};
+function overview(){
+  const W=1000,H=50,x=t=>(t/M.dur*W).toFixed(1),L=[[4,20],[26,42]];
+  let s=`<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs><linearGradient id="fo" x1="0" x2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".55"/><stop offset="1" stop-color="currentColor" stop-opacity=".05"/></linearGradient></defs>`;
+  s+=`<rect x="0" y="${L[0][0]}" width="${W}" height="16" fill="var(--lane)"/><rect x="0" y="${L[1][0]}" width="${W}" height="16" fill="var(--lane)"/>`;
+  M.tracks.filter(t=>!t.missing).forEach((t,k)=>{
+    const [y0,y1]=L[k%2], col=k%2?'var(--in)':'var(--out)', e0=t.exit==='end'?t.end:t.exit_t[0];
+    s+=`<g style="color:${col}"><rect x="${x(t.start)}" y="${y0}" width="${Math.max(0,x(e0)-x(t.start)).toFixed(1)}" height="16" fill="currentColor" opacity=".55"/>`;
+    if(t.exit==='filter'||t.exit==='fade')s+=`<rect x="${x(e0)}" y="${y0}" width="${Math.max(0,x(t.end)-x(e0)).toFixed(1)}" height="16" fill="url(#fo)"/>`;
+    if(t.exit==='filter'||t.exit==='cut')s+=`<line x1="${x(t.end)}" x2="${x(t.end)}" y1="${y0-2}" y2="${y1+2}" stroke="currentColor" stroke-width="2"/>`;
+    if(x(e0)-x(t.start)>16)s+=`<text x="${(+x(t.start)+3).toFixed(1)}" y="${y1-4}" font-size="11" font-family="Barlow Condensed,sans-serif" fill="var(--fg)">${t.n}</text>`;
+    if(t.swap!=null&&t.exit!=='end')s+=`<line x1="${x(t.swap)}" x2="${x(t.swap)}" y1="2" y2="${H-6}" stroke="var(--bass)" stroke-width="1.5" opacity="${t.estimated_swap?.5:1}"/>`;
+    if(t.exit==='filter')s+=`<line x1="${x(t.exit_t[0])}" x2="${x(t.exit_t[0])}" y1="${y0-2}" y2="${y1+2}" stroke="var(--filter)" stroke-width="2"/>`;
+    s+='</g>';
+  });
+  return s+`<line id="mph" x1="0" x2="0" y1="0" y2="${H}" stroke="var(--fg)" stroke-width="2"/></svg>`;
+}
+function nowAt(t){ // the latest track that has started; the incoming one takes over at G
+  let cur=null; for(const q of M.tracks) if(!q.missing&&q.start<=t+.05) cur=q; return cur||M.tracks.find(q=>!q.missing);
+}
+let mraf=null,lastN=null;
+function mtick(){
+  const t=mx.currentTime, q=nowAt(t), ph=document.getElementById('mph'), px=(t/M.dur*1000).toFixed(1);
+  ph.setAttribute('x1',px);ph.setAttribute('x2',px);
+  document.getElementById('npc').textContent=hms(t)+' / '+hms(M.dur);
+  const ov=document.getElementById('ov'); ov.setAttribute('aria-valuenow',Math.floor(t)); ov.setAttribute('aria-valuetext',hms(t));
+  if(q&&q.n!==lastN){lastN=q.n;
+    document.getElementById('npn').textContent='Track '+q.n;
+    document.getElementById('npt').textContent=q.title; document.getElementById('npt').title=q.title;
+    document.querySelectorAll('.track.now').forEach(r=>r.classList.remove('now'));
+    const row=document.querySelector(`.track[data-n="${q.n}"]`); if(row) row.classList.add('now');}
+  if(!mx.paused) mraf=requestAnimationFrame(mtick);
+}
+function mixIcon(){const p=!mx.paused;document.getElementById('mixplay').innerHTML=p?PAUSE:PLAY;document.getElementById('mixplay').setAttribute('aria-label',p?'Pause full set':'Play full set');
+  document.querySelector('#go span').textContent=p?'Pause full set':(mx.currentTime>0?'Resume full set':'Play full set');}
+function mixPlay(at){
+  stop(); current=null;
+  document.getElementById('mixbar').hidden=false;
+  const go=()=>{ if(at!=null) mx.currentTime=Math.min(Math.max(at,0),M.dur-.1); mx.play().then(()=>{mixIcon();cancelAnimationFrame(mraf);mtick()}).catch(()=>{}); };
+  if(mx.readyState<1&&at!=null){mx.preload='auto';mx.addEventListener('loadedmetadata',go,{once:true});mx.load()} else go();
+}
+function mixToggle(){ if(mx.paused) mixPlay(null); else {mx.pause();mixIcon();} }
+if(M){
+  mx.src=M.file;
+  document.getElementById('mixhead').hidden=false;
+  const n=M.tracks.filter(t=>!t.missing).length, miss=M.tracks.length-n;
+  document.getElementById('mixmeta').textContent=`${hms(M.dur)} · ${n} tracks${miss?` (${miss} without audio skipped)`:''} · the original tracks, mixed on the set cues`;
+  document.getElementById('ov').innerHTML=overview(); document.getElementById('ov').setAttribute('aria-valuemax',Math.floor(M.dur));
+  document.getElementById('mixplay').innerHTML=PLAY;
+  document.getElementById('go').addEventListener('click',mixToggle);
+  document.getElementById('mixplay').addEventListener('click',mixToggle);
+  mx.addEventListener('pause',mixIcon); mx.addEventListener('ended',()=>{mixIcon();cancelAnimationFrame(mraf)});
+  mx.addEventListener('seeked',()=>{lastN=null;mtick()});
+  document.querySelectorAll('.num.from').forEach(b=>b.addEventListener('click',()=>{const q=M.tracks.find(t=>t.n==b.dataset.n);mixPlay(q.start)}));
+  const ov=document.getElementById('ov');
+  ov.addEventListener('click',e=>{const r=ov.getBoundingClientRect();mixPlay((e.clientX-r.left)/r.width*M.dur)});
+  ov.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();mixPlay(mx.currentTime+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?60:10))}
+    else if(e.key===' '||e.key==='Enter'){e.preventDefault();mixToggle()}});
+}
+document.querySelectorAll('.play').forEach(b=>b.addEventListener('click',()=>{
+  const a=document.querySelector(`audio[data-i="${b.dataset.i}"]`);
+  if(current===a&&!a.paused){stop();return}
+  stop();if(M&&!mx.paused){mx.pause();mixIcon()}current=a;a.play().then(()=>{b.innerHTML=PAUSE;tick()}).catch(()=>{});
+  a.onended=()=>{b.innerHTML=PLAY;cancelAnimationFrame(raf)};
+}));
+document.querySelectorAll('.tl').forEach(el=>{
+  const seek=frac=>{const a=document.querySelector(`audio[data-i="${el.dataset.i}"]`),p=D.pairs.find(q=>q.i==el.dataset.i);
+    const go=()=>{a.currentTime=frac*p.dur; if(current!==a||a.paused){stop();if(M&&!mx.paused){mx.pause();mixIcon()}current=a;a.play().then(()=>{document.querySelector(`.play[data-i="${el.dataset.i}"]`).innerHTML=PAUSE;tick()}).catch(()=>{})}};
+    if(a.readyState<1){a.preload='auto';a.addEventListener('loadedmetadata',go,{once:true});a.load()}else go()};
+  el.addEventListener('click',e=>{const r=el.getBoundingClientRect();seek((e.clientX-r.left)/r.width)});
+  el.addEventListener('keydown',e=>{const a=document.querySelector(`audio[data-i="${el.dataset.i}"]`),p=D.pairs.find(q=>q.i==el.dataset.i);
+    if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();seek(Math.min(.999,Math.max(0,(a.currentTime+(e.key==='ArrowRight'?4:-4)*p.beat_s)/p.dur)))}});
+});
+</script>

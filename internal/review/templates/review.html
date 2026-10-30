@@ -1,0 +1,123 @@
+<!--
+ Copyright 2026 BitWise Media Group Ltd
+ SPDX-License-Identifier: MIT
+-->
+
+<meta charset="utf-8">
+<title>MIK Cue Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one scrolling column of track rows; each row = name block + a waveform-style energy strip with cue markers, like a CDJ overview */
+:root{
+  --bg:#f3f4f6; --panel:#ffffff; --fg:#16181d; --muted:#5d6472; --line:#d9dde4;
+  --bass:#2f6fd6; --mid:#9aa6b8; --brk:#e9edf3;
+  --cA:#1f9d55; --cB:#7c4dd8; --cC:#d6342f; --cD:#d98a00; --cH:#0a8f9c;
+  --mem:#c2410c; --warn:#a15c00; --warnbg:#fff2dc;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1013; --panel:#16191e; --fg:#e7eaf0; --muted:#8e97a6; --line:#272c34;
+  --bass:#4c8dff; --mid:#4a5260; --brk:#1d2128;
+  --cA:#3ccf7a; --cB:#a07cff; --cC:#ff5b55; --cD:#ffb22e; --cH:#2fd0de;
+  --mem:#ff8a4c; --warn:#ffc266; --warnbg:#2b2112; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1013; --panel:#16191e; --fg:#e7eaf0; --muted:#8e97a6; --line:#272c34;
+  --bass:#4c8dff; --mid:#4a5260; --brk:#1d2128;
+  --cA:#3ccf7a; --cB:#a07cff; --cC:#ff5b55; --cD:#ffb22e; --cH:#2fd0de;
+  --mem:#ff8a4c; --warn:#ffc266; --warnbg:#2b2112; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:700;font-size:2.1rem;letter-spacing:.01em;margin:0;text-wrap:balance}
+.lede{color:var(--muted);max-width:68ch;margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--display);font-size:.95rem;letter-spacing:.04em;text-transform:uppercase}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:10px;z-index:2;border-bottom:1px solid var(--line)}
+input[type=search]{flex:1 1 240px;min-width:0;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--fg)}
+input[type=search]:focus-visible,button:focus-visible{outline:2px solid var(--bass);outline-offset:2px}
+.chip{font-family:var(--display);font-size:.9rem;letter-spacing:.05em;text-transform:uppercase;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.count{font-family:var(--mono);font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column;gap:2px}
+.row{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;align-items:center;background:var(--panel);padding:10px 12px;border-radius:4px}
+.meta{min-width:0}
+.ti{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ar{color:var(--muted);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-family:var(--mono);font-size:.75rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px;font-variant-numeric:tabular-nums}
+.flag{color:var(--warn);background:var(--warnbg);padding:0 5px;border-radius:3px}
+.strip{min-width:0}
+.strip svg{width:100%;height:auto;display:block;overflow:visible}
+.times{font-family:var(--mono);font-size:.72rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;font-variant-numeric:tabular-nums}
+.times b{font-weight:500}
+.empty{color:var(--muted);padding:24px 0}
+@media (max-width:720px){.row{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <h1>Mixed In Key cue review</h1>
+    <p class="lede">Proposed hot cues and memory cues for __COUNT__ tracks. The blue bars show bass energy per bar and the grey bars show the mids. Shaded columns are Rekordbox "Down" phrases. Cues snap to Rekordbox's beat grid and phrase starts.</p>
+    <div class="legend" aria-label="Legend">
+      <span><i class="sw" style="background:var(--cA)"></i>A · IN</span>
+      <span><i class="sw" style="background:var(--cB)"></i>B · BRIDGE</span>
+      <span><i class="sw" style="background:var(--cC)"></i>C · DROP</span>
+      <span><i class="sw" style="background:var(--cD)"></i>D · OUT</span>
+      <span><i class="sw" style="background:var(--cH)"></i>H · EMERGENCY loop (32 beats)</span>
+      <span><i class="sw" style="background:var(--mem)"></i>Memory: S start · D drop · B bass swap</span>
+    </div>
+  </header>
+  <div class="tools">
+    <input id="q" type="search" placeholder="Filter by title or artist" aria-label="Filter tracks">
+    <button class="chip" id="fBridge" aria-pressed="false">No bridge</button>
+    <button class="chip" id="fBass" aria-pressed="false">No bass swap</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="list" id="list"></div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const COL={IN:'--cA',BRIDGE:'--cB',DROP:'--cC',OUT:'--cD',EMERGENCY:'--cH'};
+const LET={IN:'A',BRIDGE:'B',DROP:'C',OUT:'D',EMERGENCY:'H'};
+const MLET={START:'S',DROP:'D','BASS SWAP':'B'};
+const fmt=s=>{s=Math.max(0,s);const m=Math.floor(s/60),r=Math.floor(s%60);return m+':'+String(r).padStart(2,'0')};
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function strip(r){
+  const W=1000,H=74,top=16,bh=40,base=top+bh,nb=r.nb,x=b=>((b-1)/nb*W);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy overview with cue markers">`;
+  // Down phrases
+  r.ph.forEach((p,i)=>{if(p[1]==='D'){const e=(r.ph[i+1]?r.ph[i+1][0]:nb+1);s+=`<rect x="${x(p[0]).toFixed(1)}" y="${top}" width="${(x(e)-x(p[0])).toFixed(1)}" height="${bh}" fill="var(--brk)"/>`}});
+  if(r.lo){const n=r.lo.length,w=W/n;
+    for(let i=0;i<n;i++){const m=+r.md[i]/9*bh*0.9, l=+r.lo[i]/9*bh;
+      s+=`<rect x="${(i*w).toFixed(1)}" y="${(base-m).toFixed(1)}" width="${Math.max(w-0.6,0.6).toFixed(1)}" height="${m.toFixed(1)}" fill="var(--mid)"/>`;
+      s+=`<rect x="${(i*w).toFixed(1)}" y="${(base-l).toFixed(1)}" width="${Math.max(w-0.6,0.6).toFixed(1)}" height="${l.toFixed(1)}" fill="var(--bass)" opacity=".9"/>`}}
+  else s+=`<text x="${W/2}" y="${top+bh/2+4}" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="IBM Plex Mono,monospace">streaming track · phrase analysis only</text>`;
+  s+=`<line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="var(--line)"/>`;
+  r.h.forEach(([n,b])=>{const c=`var(${COL[n]})`,X=x(b);
+    if(n==='EMERGENCY'){s+=`<rect x="${X.toFixed(1)}" y="${top}" width="${(x(b+32)-X).toFixed(1)}" height="${bh}" fill="${c}" opacity=".22"/>`}
+    s+=`<line x1="${X.toFixed(1)}" x2="${X.toFixed(1)}" y1="${top}" y2="${base}" stroke="${c}" stroke-width="2"/>`;
+    s+=`<rect x="${(X-7).toFixed(1)}" y="0" width="14" height="14" rx="2" fill="${c}"/><text x="${X.toFixed(1)}" y="11" text-anchor="middle" font-size="11" font-weight="700" fill="var(--panel)" font-family="Barlow Condensed,sans-serif">${LET[n]}</text>`});
+  r.m.forEach(([n,b])=>{const X=x(b);s+=`<path d="M${(X-5).toFixed(1)} ${H-1} L${X.toFixed(1)} ${base+4} L${(X+5).toFixed(1)} ${H-1}Z" fill="var(--mem)"/><text x="${X.toFixed(1)}" y="${H-3}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--panel)" font-family="Barlow Condensed,sans-serif">${MLET[n]}</text>`});
+  return s+'</svg>';
+}
+function render(){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const nb=document.getElementById('fBridge').getAttribute('aria-pressed')==='true';
+  const ns=document.getElementById('fBass').getAttribute('aria-pressed')==='true';
+  const rows=DATA.filter(r=>(!q||(r.t+' '+r.a).toLowerCase().includes(q))&&(!nb||!r.h.some(h=>h[0]==='BRIDGE'))&&(!ns||!r.m.some(m=>m[0]==='BASS SWAP')));
+  document.getElementById('count').textContent=rows.length+' of '+DATA.length+' tracks';
+  const L=document.getElementById('list');
+  if(!rows.length){L.innerHTML='<p class="empty">No tracks match this filter.</p>';return}
+  L.innerHTML=rows.map(r=>{
+    const flags=[!r.h.some(h=>h[0]==='BRIDGE')?'<span class="flag">no bridge</span>':'',!r.m.some(m=>m[0]==='BASS SWAP')?'<span class="flag">no bass swap</span>':''].join('');
+    const times=r.h.map(([n,b,t])=>`<span><b style="color:var(${COL[n]})">${LET[n]}</b> ${n} ${fmt(t)}</span>`).join('')+r.m.map(([n,b,t])=>`<span><b style="color:var(--mem)">◆</b> ${n} ${fmt(t)}</span>`).join('');
+    return `<div class="row"><div class="meta"><div class="ti" title="${esc(r.t)}">${esc(r.t)}</div><div class="ar">${esc(r.a||'Streaming')}</div><div class="sub"><span>${r.bpm.toFixed(r.bpm%1?2:0)} BPM</span><span>${fmt(r.dur)}</span>${flags}</div></div><div class="strip">${strip(r)}<div class="times">${times}</div></div></div>`}).join('');
+}
+document.getElementById('q').addEventListener('input',render);
+['fBridge','fBass'].forEach(id=>document.getElementById(id).addEventListener('click',e=>{const b=e.currentTarget;b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');render()}));
+render();
+</script>
