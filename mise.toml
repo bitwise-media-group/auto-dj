@@ -1,0 +1,68 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+#
+# adj consumes the shared toolchain (bitwise-media-group/toolchain) as the
+# .mise/ submodule: pinned tools come from its config.toml (loaded natively as
+# .mise/config.toml), the shared tasks from common/ and the go archetype
+# (golangci-lint, govulncheck, gotestsum, the version-stamped build), and the
+# Makefile is a thin forwarder (.mise/archetypes/go/include.mk). The Go runtime
+# and govulncheck are pinned below; ffmpeg decodes the audio.
+#
+# The repo-local tasks below build and run the adj CLI. Arguments after the
+# task name are passed through to the CLI, so these are equivalent:
+#   mise run set "Melodic Set" --preview ~/Desktop/melodic-set
+#   adj set "Melodic Set" --preview ~/Desktop/melodic-set
+# They run in the invoking directory (so relative --out/--plan paths behave
+# like a plain CLI call) against a fresh build of this checkout.
+
+[tools]
+go = "1.27.3"
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
+"conda:ffmpeg" = "latest"
+
+[vars]
+app = "adj"
+app_pkg = "./cmd/adj"
+
+[task_config]
+includes = [".mise/common/tasks.toml", ".mise/archetypes/go/tasks.toml"]  # common first, archetype second
+
+[tasks.cue]
+description = "run the adj CLI with any arguments (mise run cue -- --help)"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj"'
+
+[tasks.status]
+description = "tracks per state; is Rekordbox running?"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" status'
+
+[tasks.features]
+description = "decode audio once (cached in ~/.cache/adj)"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" features'
+
+[tasks.evaluate]
+description = "score the rules against your rated tracks [-v]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" evaluate'
+
+[tasks.plan]
+description = "plan cues for MIK / CUE(Auto) / no-hot-cue tracks [--categories ...]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" plan'
+
+[tasks.review]
+description = "render the HTML review page for the current plan"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" review'
+
+[tasks.apply]
+description = "apply the plan: dry run, or --write with Rekordbox quit [--only ...]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" apply'
+
+[tasks.set]
+description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--preview DIR] [--write]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" set'
