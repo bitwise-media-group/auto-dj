@@ -1,0 +1,84 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Documentation — rebuild the Zensical site and publish it to GitHub Pages
+# (oss.bitwisemedia.uk/auto-dj/). The walkthrough pages include what
+# `auto-dj demo` prints and link the set preview it renders, so the build needs
+# Go and ffmpeg as well as uv, and the site must move whenever the code does:
+# `mise run docs-build` renders the demo set (identical on every run), then
+# builds the site. Needs Settings -> Pages -> Source -> GitHub Actions.
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "overrides/**"
+      - "zensical.toml"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "cmd/**"
+      - "internal/**"
+      - "go.mod"
+      - "go.sum"
+      - "mise.toml"
+      - ".github/workflows/docs.yaml"
+  workflow_dispatch: {}
+
+permissions: {}
+
+# serialize Pages deployments; never cancel an in-flight publish
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      # check out the source to build the site
+      contents: read
+      # publish the GitHub Pages deployment
+      pages: write
+      # OIDC token the deploy-pages action exchanges for the Pages deploy
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # read-only checkout; don't leave the token in .git/config
+          submodules: true # the toolchain at .mise/, whose pins provide uv
+
+      # Go and ffmpeg from the root mise.toml pins, uv from the toolchain's
+      # (sha256-verified against mise.lock), on PATH for the build. Nothing here
+      # is signed or attested, so the mise cache stays on.
+      - name: Setup mise (go, ffmpeg, uv)
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          version: v2026.10.3
+          # sha256 of the linux-x64 mise binary for the version above, from the release's
+          # SHASUMS256.txt -- the action verifies the extracted binary, not the archive
+          sha256: 8d48bc510b7d844fad0bc7156c0855c2a1e7230c51e498a7f6b63b021f8b57c5
+          install_args: go conda:ffmpeg aqua:astral-sh/uv
+
+      # Renders the ten demo tracks into build/ and the walkthrough fragments and
+      # set preview into docs/demo/, then Zensical renders docs/ into ./site.
+      - name: Build site
+        run: mise run docs-build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

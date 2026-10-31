@@ -1,0 +1,18 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# The auto-dj documentation site (Zensical via uv). Not a Python package: no
+# [build-system]; the go archetype's `sync`, `docs-build` and `serve` tasks run
+# `uv sync` and `uv run zensical …` against this file.
+[project]
+name = "auto-dj-docs"
+version = "0.1.0"
+description = "Documentation site for auto-dj, built with Zensical."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "BitWise Media Group Ltd.", email = "oss@bitwisemedia.uk" }]
+dependencies = [
+  "zensical>=0.0.71",
+]
