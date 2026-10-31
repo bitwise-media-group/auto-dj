@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/bitwise-media-group/auto-dj/compare/v0.1.0...v0.1.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **deps:** update the toolchain submodule to v3.4.0 ([690585e](https://github.com/bitwise-media-group/auto-dj/commit/690585eacd4ab062be4958f3ccf1ac3ff96f3538))
+
 ## 0.1.0 (2026-10-31)
 
 
