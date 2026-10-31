@@ -6,35 +6,35 @@ is loaded. The layout was learned from the library's hand-cued tracks ([ADR 0001
 <div class="ad-deck" markdown="0">
   <div class="ad-deck__mode"><span>HOT CUE</span></div>
   <div class="ad-pads">
-    <div class="ad-pad" style="--pad:#ff2d3d">
+    <div class="ad-pad ad-pad--a">
       <div class="ad-pad__face"><b>A</b><span>IN</span></div>
       <small>start mixing in</small>
     </div>
-    <div class="ad-pad" style="--pad:#19d3e0">
+    <div class="ad-pad ad-pad--b">
       <div class="ad-pad__face"><b>B</b><span>BRIDGE</span></div>
       <small>the breakdown</small>
     </div>
-    <div class="ad-pad" style="--pad:#b5e61d">
+    <div class="ad-pad ad-pad--c">
       <div class="ad-pad__face"><b>C</b><span>DROP</span></div>
       <small>first drop after it</small>
     </div>
-    <div class="ad-pad" style="--pad:#8f5bff">
+    <div class="ad-pad ad-pad--d">
       <div class="ad-pad__face"><b>D</b><span>OUT</span></div>
       <small>start mixing out</small>
     </div>
-    <div class="ad-pad" style="--pad:#1fd46a">
+    <div class="ad-pad ad-pad--e">
       <div class="ad-pad__face"><b>E</b><span>TRACK</span></div>
       <small>yours · set IN point</small>
     </div>
-    <div class="ad-pad" style="--pad:#ff3d9e">
+    <div class="ad-pad ad-pad--f">
       <div class="ad-pad__face"><b>F</b><span>JUMP</span></div>
       <small>yours · never written</small>
     </div>
-    <div class="ad-pad" style="--pad:#2f6bff">
+    <div class="ad-pad ad-pad--g">
       <div class="ad-pad__face"><b>G</b><span>TRACK</span></div>
       <small>yours · set OUT point</small>
     </div>
-    <div class="ad-pad" style="--pad:#ff8a1f">
+    <div class="ad-pad ad-pad--h">
       <div class="ad-pad__face"><b>H</b><span>EMERGENCY</span></div>
       <small>32-beat active loop</small>
     </div>
@@ -75,14 +75,14 @@ the phrases, memory cues below; the hatched band is the EMERGENCY loop.
     <span class="outro" style="width:15.04%">Outro</span>
   </div>
   <div class="ad-tl__loop" style="left:84.96%;width:7.08%"></div>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:14.16%">A IN</i>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:42.48%">B BRIDGE</i>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:56.64%">C DROP</i>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:70.80%">D OUT</i>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:84.96%">H EMERGENCY</i>
-  <i class="ad-tl__m ad-tl__m--mem" style="left:0%">START</i>
-  <i class="ad-tl__m ad-tl__m--mem" style="left:21.24%">BASS SWAP</i>
-  <i class="ad-tl__m ad-tl__m--mem" style="left:56.64%">DROP</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--a" style="left:14.16%"><b>A</b>IN</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--b" style="left:42.48%"><b>B</b>BRIDGE</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--c" style="left:56.64%"><b>C</b>DROP</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--d" style="left:70.80%"><b>D</b>OUT</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--h" style="left:84.96%"><b>H</b>EMERGENCY</i>
+  <i class="ad-tl__m ad-tl__m--mem ad-swatch--red" style="left:0%">START</i>
+  <i class="ad-tl__m ad-tl__m--mem ad-swatch--orange" style="left:21.24%">BASS SWAP</i>
+  <i class="ad-tl__m ad-tl__m--mem ad-swatch--green" style="left:56.64%">DROP</i>
 </div>
 
 IN sits where the groove starts (beat 65), the bassline arrives 32 beats later (BASS SWAP, beat 97), the breakdown is B,

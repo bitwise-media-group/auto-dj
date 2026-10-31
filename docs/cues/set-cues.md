@@ -25,8 +25,8 @@ beat − G). Two Low Sun → Glasshouse lanes from the [demo set](../guides/buil
     <span class="outro" style="width:15.04%">Outro</span>
   </div>
   <i class="ad-tl__m ad-tl__m--hot" style="left:0%">Low Sun (A)</i>
-  <i class="ad-tl__m ad-tl__m--hot" style="left:70.80%">G GLASSHOUSE</i>
-  <i class="ad-tl__m ad-tl__m--mem" style="left:77.88%">BASS SWAP OUT</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-pad--g" style="left:70.80%"><b>G</b>GLASSHOUSE</i>
+  <i class="ad-tl__m ad-tl__m--mem ad-swatch--orange" style="left:77.88%">BASS SWAP OUT</i>
 </div>
 <div class="ad-tl" style="width:63.84%;margin-left:36.16%" markdown="0">
   <div class="ad-tl__bar">
@@ -37,9 +37,9 @@ beat − G). Two Low Sun → Glasshouse lanes from the [demo set](../guides/buil
     <span class="chorus" style="width:28.32%">Chorus</span>
     <span class="outro" style="width:15.04%">Outro</span>
   </div>
-  <i class="ad-tl__m ad-tl__m--hot ad-tl__m--high" style="left:14.16%">E LOW SUN</i>
+  <i class="ad-tl__m ad-tl__m--hot ad-tl__m--high ad-pad--e" style="left:14.16%"><b>E</b>LOW SUN</i>
   <i class="ad-tl__m ad-tl__m--hot" style="left:21.24%">Glasshouse (B)</i>
-  <i class="ad-tl__m ad-tl__m--mem" style="left:21.24%">BASS SWAP IN</i>
+  <i class="ad-tl__m ad-tl__m--mem ad-swatch--orange" style="left:21.24%">BASS SWAP IN</i>
 </div>
 
 Glasshouse comes in at its IN (beat 65) while Low Sun plays from its OUT (beat 321); 32 beats later Glasshouse's

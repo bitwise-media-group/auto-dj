@@ -3,72 +3,87 @@
  SPDX-License-Identifier: MIT
 -->
 
-{#- overrides/home.html — custom landing for the auto-dj docs, on the toolchain landing's layout (hero, terminal
-showcase, marquee, connected feature grid, cards, steps) in the parent BitWise Media Group palette via the scheme-scoped
---bw-* tokens in docs/stylesheets/extra.css. Injected full-bleed between the header and the page body via the `tabs`
-block; the article `content` block is emptied, index.md sets `hide: [navigation, toc]`, and extra.css drops the empty
-.md-content on this page.
+{#- overrides/home.html: the auto-dj landing, from the design system's auto-dj kit (ui_kits/auto-dj): the hero with the
+install screen beside a live deck, the "On a real track" timeline, what auto-dj does, the commands and the three steps.
+Injected full-bleed under the header via the `tabs` block; the article `content` block is emptied, index.md sets
+`hide: [navigation, toc]`, and extra.css drops the empty .md-content on this page.
+
+docs/javascripts/auto-dj.js plays the deck: one playhead runs along the timeline and strikes each hot cue's pad as it
+passes, showing that pad on the deck's screen; striking a pad by hand shows that one. It also wraps the command rows
+between arguments and wires their copy buttons.
 
 The command cards are read from the "Commands" nav section (every entry but the overview), each card's blurb from that
-page's `description` front matter — so adding a command page to zensical.toml is all the landing needs. -#}
+page's `description` front matter, so adding a command page to zensical.toml is all the landing needs. -#}
 {% extends "main.html" %}
+
+{%- macro cmd(text) -%}
+<div class="ad-cmd">
+    <span class="ad-p">$</span>
+    <code>{{ text }}</code>
+    <div class="md-code__nav">
+        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
+            aria-label="Copy to clipboard"></button>
+    </div>
+</div>
+{%- endmacro -%}
+
+{%- macro arrow() -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+    stroke-linejoin="round" aria-hidden="true">
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+</svg>
+{%- endmacro -%}
+
 {% block tabs %}
 {{ super() }}
 {%- set ad_section = nav.items | selectattr("title", "equalto", "Commands") | first -%}
-{%- set ad_cmds = ad_section.children | rejectattr("title", "equalto", "Overview") | list %}
+{%- set ad_cmds = ad_section.children | rejectattr("title", "equalto", "Overview") | list -%}
+{#- The template, pad by pad (docs/cues/hot-cues.md). -#}
+{%- set ad_pads = [
+  {"k": "a", "name": "IN", "cap": "start mixing in", "who": "auto-dj",
+   "where": "The first phrase after Rekordbox's Intro, between beats 33 and 129."},
+  {"k": "b", "name": "BRIDGE", "cap": "the breakdown", "who": "auto-dj",
+   "where": "The first long low-bass run (64+ beats) after the first chorus. No bridge if every breakdown is under 16 beats."},
+  {"k": "c", "name": "DROP", "cap": "first drop after it", "who": "auto-dj",
+   "where": "The first Chorus phrase after the breakdown."},
+  {"k": "d", "name": "OUT", "cap": "start mixing out", "who": "auto-dj",
+   "where": "A phrase with bass, 32–128 beats before EMERGENCY (64 if it can)."},
+  {"k": "e", "name": "TRACK", "cap": "yours · set IN point", "who": "yours · set writes it",
+   "where": "Where to bring this track in when the named track is playing. Never written by plan."},
+  {"k": "f", "name": "JUMP", "cap": "yours · never written", "who": "yours",
+   "where": "Jumps and tricks: JUMP, JUMP TO DROP, ROLL 145, CROSS-MIX… set only renames JUMP <label> to JUMP."},
+  {"k": "g", "name": "TRACK", "cap": "yours · set OUT point", "who": "yours · set writes it",
+   "where": "Where to start mixing out into the named track. Never written by plan."},
+  {"k": "h", "name": "EMERGENCY", "cap": "32-beat active loop", "who": "auto-dj",
+   "where": "32 beats in the outro with bass throughout, ending at least 8 beats before the end, usually 15–30 s from the end."},
+] -%}
 <div class="ad">
     <!-- HERO -->
-    <header class="ad-hero">
-        <div class="ad-hero__grid"></div>
-        <div class="ad-hero__glow"></div>
-        <img class="ad-hero__mark" src="{{ 'assets/logo-mark.svg' | url }}" alt="" aria-hidden="true" />
-        <div class="ad-hero__inner">
-            <div class="ad-kicker"><span class="ad-dot"></span>// Rekordbox cue points and set prep</div>
+    <section class="ad-hero" data-ad-player>
+        <div>
+            <span class="ad-kicker"><span class="ad-led"></span>Rekordbox cue points and set prep</span>
             <h1 class="ad-title">Every track cued.<br /><em>Every set planned.</em></h1>
             <p class="ad-lede">
                 auto-dj puts one hot cue and memory cue layout on your Rekordbox tracks, learned from the ones you cued
                 by hand, then prepares sets: a harmonic key check, transition cues on both decks, and a preview of the
                 whole mix before you play it.
             </p>
-            <div class="ad-term">
-                <div class="ad-term__bar">
-                    <span class="ad-dots"><i></i><i></i><i></i></span><span>zsh — auto-dj</span>
-                </div>
-                <div class="ad-copy">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj demo</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
-                <div class="ad-copy">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj plan &amp;&amp; auto-dj apply --write</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
-                <div class="ad-copy">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj set "Dark Mode" --preview ~/Desktop/dark-mode</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
+            <div class="ad-screen">
+                <div class="ad-screen__bar"><span>zsh · auto-dj</span></div>
+                {{ cmd("auto-dj demo") }}
+                {{ cmd("auto-dj plan && auto-dj apply --write") }}
+                {{ cmd('auto-dj set "Dark Mode" --preview ~/Desktop/dark-mode') }}
             </div>
             <div class="ad-cta">
-                <a class="ad-btn ad-btn--primary" href="{{ 'getting-started/' | url }}">
-                    Get started
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M5 12h14" />
-                        <path d="m12 5 7 7-7 7" />
+                <a class="ad-btn ad-btn--primary" href="{{ 'getting-started/' | url }}">Get started {{ arrow() }}</a>
+                <a class="ad-btn ad-btn--pad ad-pad--e" href="{{ 'demo/preview/index.html' | url }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <polygon points="6 3 20 12 6 21 6 3" />
                     </svg>
+                    Hear the demo set
                 </a>
-                <a class="ad-btn ad-btn--secondary" href="{{ 'demo/preview/index.html' | url }}">Hear the demo set</a>
                 <a class="ad-btn ad-btn--ghost" href="{{ config.repo_url }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -80,159 +95,119 @@ page's `description` front matter — so adding a command page to zensical.toml 
                 </a>
             </div>
         </div>
-    </header>
-
-    <!-- TERMINAL SHOWCASE -->
-    <section class="ad-shot">
-        <div class="ad-shot__frame">
-            <div class="ad-shot__bar">
-                <span class="ad-dots"><i></i><i></i><i></i></span>
-                <span class="ad-title-sm">auto-dj · the demo set</span>
-                <span class="ad-live">● auto-dj demo</span>
-            </div>
-            <div class="ad-panes">
-                <div class="ad-pane">
-                    <div class="ad-pane__head"><b>1</b><span>auto-dj plan · Low Sun</span></div>
-                    <div class="ad-pane__body ad-toml">
-                        <div><span class="s">hot cues:</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">A IN</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">beat 65</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">B BRIDGE</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">beat 193</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">C DROP</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">beat 257</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">D OUT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">beat 321</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">H EMERGENCY</span> <span class="v">beat 385 · 32-beat loop</span></div>
-                        <div><span class="s">memory cues:</span></div>
-                        <div>&nbsp;&nbsp;<span class="k">START</span> <span class="v">1</span> · <span class="k">BASS SWAP</span> <span class="v">97</span> · <span class="k">DROP</span> <span class="v">257</span></div>
-                        <div class="ad-pane__sep"><span class="c"># every pad on its phrase, E/F/G left for you</span></div>
-                    </div>
+        <div class="ad-hero__deck">
+            <div class="ad-screen">
+                <div class="ad-screen__bar">
+                    <span>DECK 1 · LOW SUN</span>
+                    <span class="ad-live">128.0 BPM · Am</span>
                 </div>
-                <div class="ad-pane">
-                    <div class="ad-pane__head"><b>2</b><span>auto-dj set "auto-dj demo"</span></div>
-                    <div class="ad-pane__body">
-                        <div class="ad-dim">$ auto-dj set "auto-dj demo" --order suggested <span class="ad-blink"></span></div>
-                        <div class="ad-run"><span class="t">keys</span><span class="d">Am → F#m clash, order suggested</span><span class="ok">✓</span></div>
-                        <div class="ad-run"><span class="t">G</span><span class="d">Low Sun → GLASSHOUSE @ beat 321</span><span class="ok">✓</span></div>
-                        <div class="ad-run"><span class="t">E</span><span class="d">Glasshouse → LOW SUN @ beat 65</span><span class="ok">✓</span></div>
-                        <div class="ad-run"><span class="t">swap</span><span class="d">BASS SWAP OUT / IN, same moment</span><span class="ok">✓</span></div>
-                        <div class="ad-run"><span class="t">preview</span><span class="d">9 transitions + set.mp3 at 128 BPM</span><span class="ok">✓</span></div>
-                        <div class="ad-pane__sep ad-ok">→ listen, then set --write --reorder</div>
+                <div class="ad-screen__body ad-readouts" aria-live="polite">
+                    {%- for p in ad_pads %}
+                    <div class="ad-readout ad-pad--{{ p.k }}{% if loop.first %} is-shown{% endif %}"
+                        data-readout="{{ p.k }}"{% if not loop.first %} aria-hidden="true"{% endif %}>
+                        <span class="ad-minipad">{{ p.k | upper }}</span>
+                        <span class="ad-readout__name">{{ p.name }}</span>
+                        <span class="ad-readout__where">{{ p.where | e }}</span>
+                        <span class="ad-readout__who">placed by {{ p.who | e }}</span>
                     </div>
+                    {%- endfor %}
                 </div>
             </div>
+            <div class="ad-deck">
+                <div class="ad-deck__mode"><span>HOT CUE</span></div>
+                <div class="ad-pads">
+                    {%- for p in ad_pads %}
+                    <button class="ad-pad ad-pad--{{ p.k }}" type="button" data-pad="{{ p.k }}"
+                        aria-pressed="{{ 'true' if loop.first else 'false' }}"
+                        aria-label="{{ p.k | upper }} {{ p.name }}: {{ p.cap | e }}">
+                        <span class="ad-pad__face"><b>{{ p.k | upper }}</b><span>{{ p.name }}</span></span>
+                        <small>{{ p.cap | e }}</small>
+                    </button>
+                    {%- endfor %}
+                </div>
+            </div>
+            <p class="ad-hint">Strike a pad. The same eight pads, on every track.</p>
         </div>
-        <p class="ad-shot__cap">
-            The <b>plan</b> places the same layout on every track; the <b>set</b> lines every transition up on the
-            phrase, on both decks, and lets you hear it before anything is written.
-        </p>
     </section>
 
-    <!-- MARQUEE -->
-    {#- The cue names. Rendered twice so the translateX(-50%) scroll loops seamlessly; aria-hidden because it is
-    decorative and would otherwise be announced twice. -#}
-    <div class="ad-marquee" aria-hidden="true">
-        <div class="ad-marquee__track">
-            {% for i in [1, 2] %}{% for c in ["IN", "BRIDGE", "DROP", "OUT", "EMERGENCY", "START", "BASS SWAP IN",
-            "BASS SWAP OUT", "FILTER OUT", "CUT IN", "SYNC IN", "JUMP"] %}<span>{{ c }}</span>{% endfor %}{% endfor %}
+    <!-- ON A REAL TRACK: "Low Sun", the demo set's opener, as cued by `auto-dj plan`. -->
+    <section class="ad-track" aria-label="Low Sun, as cued by auto-dj plan">
+        <div class="ad-mode"><span>On a real track</span></div>
+        <div class="ad-track__meta">
+            <span><b>Low Sun</b> · demo set, track 1</span>
+            <span>cued by <b>auto-dj plan</b></span>
+            <span>hot cues above · memory cues below · hatched = EMERGENCY loop</span>
+            <button type="button" data-ad-play>Pause</button>
         </div>
-    </div>
-
-    <!-- STATS -->
-    <section class="ad-stats-wrap">
-        <div class="ad-stats">
-            <div class="ad-stat"><b>5</b><small>pads placed on every track</small></div>
-            <div class="ad-stat"><b>65</b><small>hand-cued tracks it learned from</small></div>
-            <div class="ad-stat"><b class="ad-ink">0</b><small>rated tracks ever touched</small></div>
-            <div class="ad-stat"><b class="ad-ink">1</b><small>verified backup per write</small></div>
+        <div class="ad-tl">
+            <div class="ad-tl__bar">
+                <span class="intro" style="width:14.16%">Intro</span>
+                <span class="up" style="width:14.16%">Up</span>
+                <span class="chorus" style="width:14.16%">Chorus</span>
+                <span class="down" style="width:14.16%">Down</span>
+                <span class="chorus" style="width:28.32%">Chorus</span>
+                <span class="outro" style="width:15.04%">Outro</span>
+            </div>
+            <div class="ad-tl__loop" style="left:84.96%;width:7.08%"></div>
+            <i class="ad-tl__m ad-tl__m--hot ad-pad--a" style="left:14.16%" data-cue="a"><b>A</b>IN</i>
+            <i class="ad-tl__m ad-tl__m--hot ad-pad--b" style="left:42.48%" data-cue="b"><b>B</b>BRIDGE</i>
+            <i class="ad-tl__m ad-tl__m--hot ad-pad--c" style="left:56.64%" data-cue="c"><b>C</b>DROP</i>
+            <i class="ad-tl__m ad-tl__m--hot ad-pad--d" style="left:70.80%" data-cue="d"><b>D</b>OUT</i>
+            <i class="ad-tl__m ad-tl__m--hot ad-pad--h" style="left:84.96%" data-cue="h"><b>H</b>EMERGENCY</i>
+            <i class="ad-tl__m ad-tl__m--mem ad-swatch--red" style="left:0%">START</i>
+            <i class="ad-tl__m ad-tl__m--mem ad-swatch--orange" style="left:21.24%">BASS SWAP</i>
+            <i class="ad-tl__m ad-tl__m--mem ad-swatch--green" style="left:56.64%">DROP</i>
+            <div class="ad-tl__head" style="left:10%"></div>
         </div>
     </section>
 
     <!-- WHAT IT DOES -->
     <section class="ad-section">
-        <h2 class="ad-eyebrow">// WHAT AUTO-DJ DOES</h2>
+        <div class="ad-mode"><span>What auto-dj does</span></div>
         <p class="ad-lead">Rekordbox's grid and phrases plus a bass analysis in, cues where you'd put them out.</p>
-        <div class="ad-conn ad-grid-3">
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-orange)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect width="7" height="7" x="3" y="3" rx="1" />
-                        <rect width="7" height="7" x="14" y="3" rx="1" />
-                        <rect width="7" height="7" x="14" y="14" rx="1" />
-                        <rect width="7" height="7" x="3" y="14" rx="1" />
-                    </svg>
-                </div>
+        <div class="ad-grid-3">
+            <div class="ad-card ad-pad--a">
+                <span class="ad-minipad">A</span>
                 <h3>One pad layout</h3>
                 <p>
                     IN, BRIDGE, DROP, OUT and an EMERGENCY loop on the same pads on every track, replacing Mixed In
                     Key's <code>Energy N</code> and Rekordbox's <code>CUE(Auto)</code> cues.
                 </p>
             </div>
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-orange-2)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M2 12h3l3-8 4 16 3-8h7" />
-                    </svg>
-                </div>
+            <div class="ad-card ad-pad--b">
+                <span class="ad-minipad">B</span>
                 <h3>On the phrase</h3>
                 <p>
                     Cues snap to Rekordbox's phrase analysis, and the bass level tells breakdowns, drops and the bass
                     swap apart. Rules are scored against your own cues with <code>evaluate</code>.
                 </p>
             </div>
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-amber)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M12 3v9l6 3" />
-                    </svg>
-                </div>
+            <div class="ad-card ad-pad--c">
+                <span class="ad-minipad">C</span>
                 <h3>Harmonic key check</h3>
                 <p>
                     Every neighbour is checked on the Camelot wheel. On a clash you get the cheapest order that keeps
                     your opener and as many pairs as it can.
                 </p>
             </div>
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-green)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M8 3 4 7l4 4" />
-                        <path d="M4 7h16" />
-                        <path d="m16 21 4-4-4-4" />
-                        <path d="M20 17H4" />
-                    </svg>
-                </div>
+            <div class="ad-card ad-pad--d">
+                <span class="ad-minipad">D</span>
                 <h3>Cues on both decks</h3>
                 <p>
                     G where A mixes out, E where B comes in, and BASS SWAP, FILTER and CUT markers on both tracks at the
                     same moment, named by side.
                 </p>
             </div>
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-orange)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z" />
-                        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                    </svg>
-                </div>
+            <div class="ad-card ad-pad--e">
+                <span class="ad-minipad">E</span>
                 <h3>Hear it first</h3>
                 <p>
                     Every transition and the whole set rendered from your files, following the cues exactly, at a
                     fixed tempo with the key kept.
                 </p>
             </div>
-            <div class="ad-feat">
-                <div class="ad-glyph" style="background: var(--bw-orange-2)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path
-                            d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-                        <path d="m9 12 2 2 4-4" />
-                    </svg>
-                </div>
+            <div class="ad-card ad-pad--h">
+                <span class="ad-minipad">H</span>
                 <h3>Safe writes</h3>
                 <p>
                     Dry runs by default. Writes need Rekordbox quit, back up <code>master.db</code>, apply in one
@@ -244,114 +219,49 @@ page's `description` front matter — so adding a command page to zensical.toml 
 
     <!-- COMMANDS -->
     <section class="ad-section">
-        <h2 class="ad-eyebrow">// COMMANDS</h2>
+        <div class="ad-mode"><span>Commands</span></div>
         <p class="ad-lead">One binary, read-only until you say <code>--write</code>.</p>
-        <div class="ad-card-grid">
-            {% for c in ad_cmds %}
+        <div class="ad-grid-4">
+            {%- for c in ad_cmds %}
             <a class="ad-card" href="{{ c.url | url }}">
                 <span class="ad-card__name">{{ c.title }}</span>
                 <p>{{ c.meta.description if c.meta and c.meta.description else "" }}</p>
                 <code>auto-dj {{ c.title }}</code>
             </a>
-            {% endfor %}
+            {%- endfor %}
         </div>
     </section>
 
-    <!-- THREE STEPS -->
+    <!-- FROM A PLAYLIST TO A SET -->
     <section class="ad-section ad-section--last">
-        <h2 class="ad-eyebrow">// FROM A PLAYLIST TO A SET</h2>
-        <div class="ad-conn ad-steps">
-            <div class="ad-step">
-                <div class="ad-step__body">
-                    <div class="ad-step__num">01</div>
+        <div class="ad-mode"><span>From a playlist to a set</span></div>
+        <div class="ad-steps">
+            <div class="ad-step ad-pad--a">
+                <div class="ad-step__top"><span class="ad-minipad">A</span>
                     <h3>Cue</h3>
-                    <p>Decode the audio once, plan the cues, check them on the review page and write them.</p>
-                    <a class="ad-step__alt" href="{{ 'getting-started/cueing/' | url }}">Cueing your library
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M5 12h14" />
-                            <path d="m12 5 7 7-7 7" />
-                        </svg>
-                    </a>
                 </div>
-                <div class="ad-cmd">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj plan</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
+                <p>Decode the audio once, plan the cues, check them on the review page and write them.</p>
+                <a href="{{ 'getting-started/cueing/' | url }}">Cueing your library →</a>
+                <div class="ad-screen">{{ cmd("auto-dj plan") }}</div>
             </div>
-            <div class="ad-step">
-                <div class="ad-step__body">
-                    <div class="ad-step__num">02</div>
+            <div class="ad-step ad-pad--c">
+                <div class="ad-step__top"><span class="ad-minipad">C</span>
                     <h3>Plan the set</h3>
-                    <p>Check the keys, take the suggested order, and render a preview of every transition.</p>
-                    <a class="ad-step__alt" href="{{ 'guides/building-a-set/' | url }}">Building a set
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M5 12h14" />
-                            <path d="m12 5 7 7-7 7" />
-                        </svg>
-                    </a>
                 </div>
-                <div class="ad-cmd">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj set "Dark Mode" --preview ~/Desktop/dark-mode</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
+                <p>Check the keys, take the suggested order, and render a preview of every transition.</p>
+                <a href="{{ 'guides/building-a-set/' | url }}">Building a set →</a>
+                <div class="ad-screen">{{ cmd('auto-dj set "Dark Mode" --preview ~/Desktop/dark-mode') }}</div>
             </div>
-            <div class="ad-step">
-                <div class="ad-step__body">
-                    <div class="ad-step__num">03</div>
+            <div class="ad-step ad-pad--d">
+                <div class="ad-step__top"><span class="ad-minipad">D</span>
                     <h3>Write and play</h3>
-                    <p>Write the set cues and the order with Rekordbox quit, then export to your USB stick.</p>
-                    <a class="ad-step__alt" href="{{ 'cues/set-cues/' | url }}">Set cues
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M5 12h14" />
-                            <path d="m12 5 7 7-7 7" />
-                        </svg>
-                    </a>
                 </div>
-                <div class="ad-cmd">
-                    <span class="ad-p">$</span>
-                    <code>auto-dj set "Dark Mode" --write --reorder</code>
-                    <div class="md-code__nav">
-                        <button class="md-code__button" type="button" data-md-type="copy" title="Copy to clipboard"
-                            aria-label="Copy to clipboard"></button>
-                    </div>
-                </div>
+                <p>Write the set cues and the order with Rekordbox quit, then export to your USB stick.</p>
+                <a href="{{ 'cues/set-cues/' | url }}">Set cues →</a>
+                <div class="ad-screen">{{ cmd('auto-dj set "Dark Mode" --write --reorder') }}</div>
             </div>
         </div>
     </section>
 </div>
-<script>
-    // Wire the landing-page copy buttons. Delegated on document so it survives instant navigation; scoped to
-    // .ad-copy / .ad-cmd so it never touches zensical's own code-block copy buttons. Strips the leading "$ " prompt,
-    // then reuses zensical's own snackbar element so the feedback matches the native code-block copy button exactly.
-    document.addEventListener("click", function (e) {
-        var btn = e.target.closest(".ad-copy .md-code__button, .ad-cmd .md-code__button");
-        if (!btn) return;
-        var row = btn.closest(".ad-copy, .ad-cmd");
-        var code = row && row.querySelector("code");
-        if (!code) return;
-        navigator.clipboard.writeText(code.textContent.replace(/^\s*\$\s+/, "")).then(function () {
-            btn.focus();
-            var dialog = document.querySelector("[data-md-component=dialog]");
-            if (!dialog) return;
-            (dialog.querySelector(".md-dialog__inner") || dialog).textContent = "Copied to clipboard";
-            dialog.classList.add("md-dialog--active");
-            window.clearTimeout(dialog.adResetTimer);
-            dialog.adResetTimer = window.setTimeout(function () {
-                dialog.classList.remove("md-dialog--active");
-            }, 2000);
-        });
-    });
-</script>
 {% endblock %}
 {% block content %}{% endblock %}

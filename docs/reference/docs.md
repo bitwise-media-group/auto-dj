@@ -1,8 +1,14 @@
 # Working on the docs
 
-This site is [Zensical](https://zensical.org), built with uv through the toolchain's go archetype. Its look comes from
-the [toolchain site](https://oss.bitwisemedia.uk/toolchain/): the same `docs/stylesheets/extra.css` tokens and header
-partials, with a landing page in `overrides/home.html`.
+This site is [Zensical](https://zensical.org), built with uv through the toolchain's go archetype. Its look is the deck
+theme from the design system's auto-dj kit (`ui_kits/auto-dj` in bitwise-media-group/design-system): hot cue pads lit on
+a dark deck, with colour kept for cues. The tokens and page styles are in `docs/stylesheets/extra.css`, the header
+partials in `overrides/partials/`, the landing in `overrides/home.html`, and its live deck and command rows in
+`docs/javascripts/auto-dj.js`.
+
+Diagrams use the theme's classes: `ad-deck` for the pads, `ad-tl` for a track's timeline, `ad-swatch` for a memory cue
+colour. Give each pad or hot cue marker its colour with `ad-pad--a` to `ad-pad--h`, and each memory cue marker with an
+`ad-swatch--<colour>` class (see `docs/cues/hot-cues.md`).
 
 ```sh
 mise run serve        # http://localhost:8004, live reload for docs/ edits

@@ -1,13 +1,15 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# auto-dj documentation — Zensical configuration
+# auto-dj documentation: Zensical configuration
 # https://zensical.org/docs/setup/basics/
 #
-# Same shape and look as the toolchain and flux-containers sites (the parent
-# BitWise Media Group palette, terracotta on cream, see
-# docs/stylesheets/extra.css). The landing page is overrides/home.html; its
-# command cards are read from the "Commands" nav section below.
+# The deck theme from the design system's auto-dj kit (ui_kits/auto-dj): hot
+# cue pads lit on a dark deck, colour reserved for cues; see
+# docs/stylesheets/extra.css. Top-level sections are sticky header tabs. The
+# landing page is overrides/home.html; its command cards are read from the
+# "Commands" nav section below, and docs/javascripts/auto-dj.js drives its
+# deck and command rows.
 
 [project]
 site_name = "auto-dj"
@@ -17,11 +19,12 @@ repo_url = "https://github.com/bitwise-media-group/auto-dj"
 repo_name = "bitwise-media-group/auto-dj"
 # The `#__consent` link re-opens the cookie consent dialog so visitors can
 # change their choice at any time (see [project.extra.consent] below).
-copyright = '© 2026 BitWise Media Group Ltd — <a href="#__consent">Change cookie settings</a>'
+copyright = '© 2026 BitWise Media Group Ltd · <a href="#__consent">Change cookie settings</a>'
 dev_addr = "localhost:8004"
 
 # Paths are relative to docs_dir (default: "docs")
 extra_css = ["stylesheets/extra.css"]
+extra_javascript = ["javascripts/auto-dj.js"]
 
 nav = [
   { "Home" = "index.md" },
@@ -75,9 +78,11 @@ nav = [
 [project.theme]
 name = "material"
 custom_dir = "overrides"
-favicon = "assets/logo-mark.svg"
+favicon = "assets/pad-mark.svg"
 features = [
   "navigation.instant",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
   "navigation.tracking",
   "navigation.top",
   "navigation.footer",

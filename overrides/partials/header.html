@@ -3,9 +3,10 @@
  SPDX-License-Identifier: MIT
 -->
 
-{#- overrides/partials/header.html — auto-dj header. Drops the stock logo and renders the parent-brand lockup: the
-terracotta BitWise logo mark beside a stacked "auto-dj / BITWISE MEDIA GROUP" wordmark, linking home (removing the
-logo removes the header's only home affordance). Styling lives in docs/stylesheets/extra.css (.ad-headmark). -#}
+{#- overrides/partials/header.html: the auto-dj header. Drops the stock logo and renders the lockup: the pad mark
+(pads A to D lit, docs/assets/pad-mark.svg) beside a stacked "auto-dj / BITWISE MEDIA GROUP" wordmark, linking home
+(removing the logo removes the header's only home affordance). With navigation.tabs.sticky the tabs render inside the
+header, under the LED strip's row. Styling lives in docs/stylesheets/extra.css (.ad-headmark, .md-tabs). -#}
 {% set class = "md-header" %}
 {% if "navigation.tabs.sticky" in features %}
   {% set class = class ~ " md-header--shadow md-header--lifted" %}
@@ -28,7 +29,7 @@ logo removes the header's only home affordance). Styling lives in docs/styleshee
                             class="ad-headmark"
                             aria-label="{{ config.site_name }}"
                         >
-                            <img src="{{ 'assets/logo-mark.svg' | url }}" alt="" />
+                            <img src="{{ 'assets/pad-mark.svg' | url }}" alt="" />
                             <span class="ad-headmark__text">
                                 <span class="ad-headmark__name">auto-dj</span>
                                 <span class="ad-headmark__sub">BITWISE MEDIA GROUP</span>
