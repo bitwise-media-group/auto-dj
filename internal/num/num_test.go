@@ -39,7 +39,9 @@ func TestPercentileAndMean(t *testing.T) {
 			t.Errorf("Percentile(%d, %v) = %v, want %v", len(c.a), c.q, got, c.want)
 		}
 	}
-	if got := Mean(y); math.Abs(got-0.0065082293479743905) > 1e-17 {
+	// math.Sin is not bit-identical across GOARCH (arm64 fuses its polynomial into FMAs, amd64
+	// does not), so y drifts by an ulp here and there and the mean by ~2e-17.
+	if got := Mean(y); math.Abs(got-0.0065082293479743905) > 1e-16 {
 		t.Errorf("Mean = %v", got)
 	}
 	l := make([]float64, 100) // np.log10(np.arange(1, 101) + 1e-9)
