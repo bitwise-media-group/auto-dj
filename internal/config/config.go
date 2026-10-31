@@ -4,8 +4,9 @@
 // Package config holds paths, the cue template and the rule thresholds.
 //
 // Every threshold here was tuned against Deavon's 51 hand-cued tracks on 2026-10-14
-// (see docs/DECISIONS.md for what each one does and how it scored). Change them in one
-// place and re-run `adj evaluate` to see the effect before writing anything.
+// (see docs/decisions/0003-cue-placement-rules.md for what each one does and how it
+// scored). Change them in one place and re-run `auto-dj evaluate` to see the effect before
+// writing anything.
 package config
 
 import (
@@ -23,12 +24,12 @@ func DefaultRBDir() string {
 	return filepath.Join(home(), "Library", "Pioneer", "rekordbox")
 }
 
-// DefaultWorkDir is the feature cache and plan output folder (ADJ_WORK overrides it).
+// DefaultWorkDir is the feature cache and plan output folder (AUTO_DJ_WORK overrides it).
 func DefaultWorkDir() string {
-	if w := os.Getenv("ADJ_WORK"); w != "" {
+	if w := os.Getenv("AUTO_DJ_WORK"); w != "" {
 		return w
 	}
-	return filepath.Join(home(), ".cache", "adj")
+	return filepath.Join(home(), ".cache", "auto-dj")
 }
 
 func home() string {
@@ -40,8 +41,8 @@ func home() string {
 }
 
 // PathMap is an optional audio path remap for a library mounted somewhere else (e.g. a VM):
-// ADJ_PATH_MAP="/Users/me/Music=/mnt/Music;/Volumes/USB=/mnt/usb".
-var PathMap = parsePathMap(os.Getenv("ADJ_PATH_MAP"))
+// AUTO_DJ_PATH_MAP="/Users/me/Music=/mnt/Music;/Volumes/USB=/mnt/usb".
+var PathMap = parsePathMap(os.Getenv("AUTO_DJ_PATH_MAP"))
 
 func parsePathMap(s string) [][2]string {
 	var out [][2]string
@@ -55,11 +56,11 @@ func parsePathMap(s string) [][2]string {
 
 // CloudDirs are where Cloud Library Sync tracks live. Their FolderPath is relative to the
 // cloud drive's rekordbox folder ('/contents_<device id>/artist/album/file'); the files are
-// in e.g. ~/Library/CloudStorage/Dropbox-<team>/<member>/rekordbox. ADJ_CLOUD_DIR overrides.
+// in e.g. ~/Library/CloudStorage/Dropbox-<team>/<member>/rekordbox. AUTO_DJ_CLOUD_DIR overrides.
 var CloudDirs = cloudDirs()
 
 func cloudDirs() []string {
-	if d := os.Getenv("ADJ_CLOUD_DIR"); d != "" {
+	if d := os.Getenv("AUTO_DJ_CLOUD_DIR"); d != "" {
 		return []string{d}
 	}
 	set := map[string]bool{}

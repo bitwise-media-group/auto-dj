@@ -7,11 +7,11 @@ import (
 	"math"
 	"os"
 
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/rules"
-	"github.com/bitwise-media-group/adj/internal/setlist"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/rules"
+	"github.com/bitwise-media-group/auto-dj/internal/setlist"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // ExitPlan is how a track leaves the mix (mix seconds):

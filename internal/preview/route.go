@@ -7,9 +7,9 @@ import (
 	"math"
 	"slices"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // BeatTime is the source second of (possibly fractional / out-of-range) beat b on t's grid.

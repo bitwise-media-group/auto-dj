@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/rules"
-	"github.com/bitwise-media-group/adj/internal/text"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/rules"
+	"github.com/bitwise-media-group/auto-dj/internal/text"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // names maps hot cue kinds to the template names they are scored as, in report order.

@@ -28,7 +28,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 	"gonum.org/v1/gonum/dsp/fourier"
 
-	"github.com/bitwise-media-group/adj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
 )
 
 const (

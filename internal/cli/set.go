@@ -12,10 +12,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/pairs"
-	"github.com/bitwise-media-group/adj/internal/preview"
-	"github.com/bitwise-media-group/adj/internal/setlist"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/pairs"
+	"github.com/bitwise-media-group/auto-dj/internal/preview"
+	"github.com/bitwise-media-group/auto-dj/internal/setlist"
+	"github.com/bitwise-media-group/auto-dj/internal/text"
 )
 
 type setPlan struct {
@@ -27,7 +28,7 @@ type setPlan struct {
 func setCmd(g *globals) *cobra.Command {
 	var order, previewDir, out string
 	var bpm float64
-	var freeStart, reorder, noMix, write bool
+	var freeStart, reorder, noPreview, noMix, write bool
 	cmd := &cobra.Command{
 		Use:   "set [playlist]",
 		Short: "set-specific E/G cues + BASS SWAP for a playlist (omit it to list playlists)",
@@ -67,8 +68,9 @@ func setCmd(g *globals) *cobra.Command {
 				return err
 			}
 			fmt.Printf("\nset plan written to %s\n", dest)
-			if previewDir != "" {
-				page, err := preview.Build(playlist, res.Order, res.Actions, res.Recs, expandUser(previewDir), !noMix, bpm)
+			if !noPreview {
+				dir := filepath.Join(expandUser(orDefault(previewDir, p.WorkDir)), text.Slug(playlist))
+				page, err := preview.Build(playlist, res.Order, res.Actions, res.Recs, dir, !noMix, bpm)
 				if err != nil {
 					return err
 				}
@@ -110,9 +112,11 @@ func setCmd(g *globals) *cobra.Command {
 	f.StringVar(&order, "order", "", "'suggested' or a comma-separated track-number order, e.g. 1,3,2,4")
 	f.BoolVar(&freeStart, "free-start", false, "let the suggested order change the first track")
 	f.BoolVar(&reorder, "reorder", false, "with --write: also save the order to the playlist")
-	f.StringVar(&previewDir, "preview", "", "render transition previews, the full-set mix and a set-list page into `DIR`")
-	f.BoolVar(&noMix, "no-mix", false, "with --preview: skip the full-set mix (set.mp3)")
-	f.Float64Var(&bpm, "bpm", 128, "with --preview: play the mix and clips at this fixed tempo, key kept "+
+	f.StringVar(&previewDir, "preview-dir", "", "render transition previews, the full-set mix and a set-list page "+
+		"into `DIR`/<set name> (default <work>)")
+	f.BoolVar(&noPreview, "no-preview", false, "skip the previews")
+	f.BoolVar(&noMix, "no-mix", false, "skip the full-set mix (set.mp3)")
+	f.Float64Var(&bpm, "bpm", 128, "play the previews at this fixed tempo, key kept "+
 		"(0: each track at its own tempo)")
 	f.StringVar(&out, "out", "", "set plan file (default <work>/set-plan.json)")
 	f.BoolVar(&write, "write", false, "write the cues (Rekordbox quit)")

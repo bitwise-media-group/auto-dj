@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/plan"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/plan"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 //go:embed templates/*.html

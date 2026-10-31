@@ -11,11 +11,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/rules"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/rules"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // Order is the hot cue order the flags check.

@@ -1,4 +1,4 @@
-module github.com/bitwise-media-group/adj
+module github.com/bitwise-media-group/auto-dj
 
 go 1.27.3
 

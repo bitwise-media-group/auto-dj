@@ -1,17 +1,17 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 #
-# adj consumes the shared toolchain (bitwise-media-group/toolchain) as the
+# auto-dj consumes the shared toolchain (bitwise-media-group/toolchain) as the
 # .mise/ submodule: pinned tools come from its config.toml (loaded natively as
 # .mise/config.toml), the shared tasks from common/ and the go archetype
 # (golangci-lint, govulncheck, gotestsum, the version-stamped build), and the
 # Makefile is a thin forwarder (.mise/archetypes/go/include.mk). The Go runtime
 # and govulncheck are pinned below; ffmpeg decodes the audio.
 #
-# The repo-local tasks below build and run the adj CLI. Arguments after the
+# The repo-local tasks below build and run the auto-dj CLI. Arguments after the
 # task name are passed through to the CLI, so these are equivalent:
-#   mise run set "Melodic Set" --preview ~/Desktop/melodic-set
-#   adj set "Melodic Set" --preview ~/Desktop/melodic-set
+#   mise run set "Melodic Set" --preview-dir ~/Desktop
+#   auto-dj set "Melodic Set" --preview-dir ~/Desktop
 # They run in the invoking directory (so relative --out/--plan paths behave
 # like a plain CLI call) against a fresh build of this checkout.
 
@@ -21,48 +21,77 @@ go = "1.27.3"
 "conda:ffmpeg" = "latest"
 
 [vars]
-app = "adj"
-app_pkg = "./cmd/adj"
+app = "auto-dj"
+app_pkg = "./cmd/auto-dj"
 
 [task_config]
 includes = [".mise/common/tasks.toml", ".mise/archetypes/go/tasks.toml"]  # common first, archetype second
 
 [tasks.cue]
-description = "run the adj CLI with any arguments (mise run cue -- --help)"
+description = "run the auto-dj CLI with any arguments (mise run cue -- --help)"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj"'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj"'
 
 [tasks.status]
 description = "tracks per state; is Rekordbox running?"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" status'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" status'
 
 [tasks.features]
-description = "decode audio once (cached in ~/.cache/adj)"
+description = "decode audio once (cached in ~/.cache/auto-dj)"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" features'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" features'
 
 [tasks.evaluate]
 description = "score the rules against your rated tracks [-v]"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" evaluate'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" evaluate'
 
 [tasks.plan]
 description = "plan cues for MIK / CUE(Auto) / no-hot-cue tracks [--categories ...]"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" plan'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" plan'
 
 [tasks.review]
 description = "render the HTML review page for the current plan"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" review'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" review'
 
 [tasks.apply]
 description = "apply the plan: dry run, or --write with Rekordbox quit [--only ...]"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" apply'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" apply'
 
 [tasks.set]
-description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--preview DIR] [--write]"
+description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--preview-dir DIR] [--write]"
 dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o adj ./cmd/adj && "{{config_root}}/adj" set'
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" set'
+
+[tasks.demo]
+description = "render the demo set, cue it, plan the set and open its preview [DIR]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" demo'
+
+# The docs site (zensical.toml + docs/, Zensical via uv; the go archetype supplies `sync`).
+# The walkthrough pages include what `auto-dj demo` prints and link its preview page, so
+# every docs entry point regenerates them first: the AIFFs go to build/demo/ (never into
+# the site), the fragments and preview to docs/demo/ (git-ignored). Skipped while the Go
+# sources are unchanged.
+[tasks.docs-demo]
+hide = true
+dir = "{{config_root}}"
+sources = ["go.mod", "go.sum", "cmd/**/*.go", "internal/**/*.go", "internal/review/templates/*.html"]
+outputs = ["docs/demo/preview/index.html"]
+run = "go build -o auto-dj ./cmd/auto-dj && ./auto-dj demo docs/demo --tracks build/demo/tracks --no-open"
+
+[tasks.docs-build]
+description = "build the documentation site (demo walkthrough + zensical)"
+dir = "{{config_root}}"
+depends = ["sync"]
+run = [{ task = "docs-demo" }, "uv run --no-sync zensical build"]
+
+[tasks.serve]
+description = "serve the docs site locally on :8004 (zensical)"
+dir = "{{config_root}}"
+depends = ["sync"]
+run = [{ task = "docs-demo" }, "uv run --no-sync zensical serve"]

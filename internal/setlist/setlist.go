@@ -34,12 +34,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/pairs"
-	"github.com/bitwise-media-group/adj/internal/rules"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/pairs"
+	"github.com/bitwise-media-group/auto-dj/internal/rules"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // Phrase is the phrase length in beats.

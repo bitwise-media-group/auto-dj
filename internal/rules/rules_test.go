@@ -7,10 +7,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/bitwise-media-group/adj/internal/anlz"
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/rules"
-	"github.com/bitwise-media-group/adj/internal/testtrack"
+	"github.com/bitwise-media-group/auto-dj/internal/anlz"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/rules"
+	"github.com/bitwise-media-group/auto-dj/internal/testtrack"
 )
 
 func TestHotCuesFollowTemplate(t *testing.T) {

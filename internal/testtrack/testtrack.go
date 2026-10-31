@@ -5,9 +5,9 @@
 package testtrack
 
 import (
-	"github.com/bitwise-media-group/adj/internal/anlz"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/anlz"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // Options shape a synthetic track (zero values take the defaults).

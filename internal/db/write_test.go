@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/bitwise-media-group/adj/internal/sqlcipher"
+	"github.com/bitwise-media-group/auto-dj/internal/sqlcipher"
 )
 
 // fixture is a SQLCipher database (key 'test') with table t(id, name) holding 300 rows.
@@ -231,6 +231,34 @@ func TestApplyPlanRerun(t *testing.T) {
 	got := cuesOf(t, d, "10") // ARIA (the user's E) survives; IN moved; START re-added once
 	if len(got) != 3 || got[2].Comment != "IN" || got[2].InMsec != 33000 || got[1].Comment != "ARIA" {
 		t.Errorf("%+v", got)
+	}
+}
+
+func TestApplyPlanActiveLoop(t *testing.T) {
+	// 10: the user's memory-cue active loop stays; 11 (re-run): the user's G is an active loop;
+	// 12 (re-run): only our old EMERGENCY was active, and it's replaced.
+	extra := cueSQL("1", "10", 1, 1000, "Energy 5", -1) + cueSQL("2", "10", 0, 9000, "LOOP", 0) +
+		cueSQL("3", "11", 1, 1000, "IN", -1) + cueSQL("4", "11", 8, 9000, "RUN", -1) +
+		cueSQL("5", "12", 9, 200000, "EMERGENCY", 255) +
+		"update djmdCue set ActiveLoop=1 where ID in ('2', '4', '5');" +
+		"update djmdContent set Rating=0 where ID='12';"
+	em := PlanHot{Kind: 9, Name: "EMERGENCY", MS: 200000, Loop: 32, OutMS: 215000}
+	plan := make([]PlanTrack, 0, 3)
+	for _, id := range []string{"10", "11", "12"} {
+		plan = append(plan, PlanTrack{ID: id, Title: id, Hot: []PlanHot{{Kind: 1, Name: "IN", MS: 15000}, em}})
+	}
+	d := withTx(t, extra, func(tx *sql.Tx) {
+		st, err := ApplyPlan(tx, plan, map[string]bool{"11": true, "12": true})
+		if err != nil || st.Get("updated") != 3 {
+			t.Fatalf("%v %s", err, st)
+		}
+	})
+	for id, want := range map[string]int64{"10": 0, "11": 0, "12": 1} {
+		got := cuesOf(t, d, id)
+		i := slices.IndexFunc(got, func(c cueRowOut) bool { return c.Comment == "EMERGENCY" })
+		if i < 0 || got[i].AL != (sql.NullInt64{Int64: want, Valid: true}) {
+			t.Errorf("track %s: EMERGENCY ActiveLoop want %d: %+v", id, want, got)
+		}
 	}
 }
 

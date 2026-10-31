@@ -11,13 +11,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/evaluate"
-	"github.com/bitwise-media-group/adj/internal/features"
-	"github.com/bitwise-media-group/adj/internal/plan"
-	"github.com/bitwise-media-group/adj/internal/review"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/evaluate"
+	"github.com/bitwise-media-group/auto-dj/internal/features"
+	"github.com/bitwise-media-group/auto-dj/internal/plan"
+	"github.com/bitwise-media-group/auto-dj/internal/review"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 var allCategories = []string{"mik", "nohot", "manual", "auto", "other"}

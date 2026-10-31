@@ -10,12 +10,12 @@ import (
 	"testing"
 )
 
-// TestRealRoundTrip decrypts a real master.db (ADJ_TEST_MASTER_DB, never the live one) and
+// TestRealRoundTrip decrypts a real master.db (AUTO_DJ_TEST_MASTER_DB, never the live one) and
 // re-encrypts it with the original IVs: the result must match byte for byte.
 func TestRealRoundTrip(t *testing.T) {
-	src := os.Getenv("ADJ_TEST_MASTER_DB")
+	src := os.Getenv("AUTO_DJ_TEST_MASTER_DB")
 	if src == "" {
-		t.Skip("set ADJ_TEST_MASTER_DB to a copy of master.db")
+		t.Skip("set AUTO_DJ_TEST_MASTER_DB to a copy of master.db")
 	}
 	key, err := RekordboxKey()
 	if err != nil {

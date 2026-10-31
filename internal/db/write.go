@@ -18,7 +18,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bitwise-media-group/adj/internal/sqlcipher"
+	"github.com/bitwise-media-group/auto-dj/internal/sqlcipher"
 )
 
 // Stats is a write's outcome: an ordered set of counters and lists, printed as JSON.
@@ -285,7 +285,7 @@ func applyPlain(path string, fn ApplyFunc) (*Stats, error) {
 
 // DryRun applies fn to a throwaway decrypted copy of masterDB and returns the stats.
 func DryRun(masterDB string, fn ApplyFunc) (*Stats, error) {
-	dir, err := os.MkdirTemp("", "adj-dry-")
+	dir, err := os.MkdirTemp("", "auto-dj-dry-")
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func safeWrite(masterDB, backupDir, key string, guard func(string) error, fn App
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", "adj-write-")
+	dir, err := os.MkdirTemp("", "auto-dj-write-")
 	if err != nil {
 		return nil, err
 	}

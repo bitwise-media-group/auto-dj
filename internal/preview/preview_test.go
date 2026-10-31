@@ -17,10 +17,10 @@ import (
 
 	"gonum.org/v1/gonum/dsp/fourier"
 
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/setlist"
-	"github.com/bitwise-media-group/adj/internal/testtrack"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/setlist"
+	"github.com/bitwise-media-group/auto-dj/internal/testtrack"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 var cue = testtrack.Cue

@@ -12,16 +12,17 @@
 //	          back to phrase labels only (e.g. streaming tracks)
 //
 // All positions are 1-based beat indices. Everything snaps to the "grid": Rekordbox phrase
-// starts plus every 16 beats from the first downbeat. See docs/DECISIONS.md for the why.
+// starts plus every 16 beats from the first downbeat. See docs/decisions/0003-cue-placement-rules.md
+// for the why.
 package rules
 
 import (
 	"math"
 	"slices"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // Segment is a phrase as [Start, End) with its label.

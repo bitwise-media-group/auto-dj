@@ -17,7 +17,7 @@ import (
 
 	"gonum.org/v1/gonum/dsp/fourier"
 
-	"github.com/bitwise-media-group/adj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
 )
 
 // Stereo is interleaved-by-frame float32 audio at SR.

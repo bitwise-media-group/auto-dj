@@ -10,8 +10,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
 )
 
 // Ours are the cue names this tool writes (replaced when it re-cues a track).
@@ -45,11 +45,12 @@ type cueInfo struct {
 	kind    int
 	comment string
 	inMS    int
+	active  bool // ActiveLoop 1
 }
 
 func trackCues(tx *sql.Tx, contentID, extra string) ([]cueInfo, error) {
-	rows, err := tx.Query("select ID, Kind, Comment, InMsec from djmdCue where ContentID=? and rb_local_deleted=0"+extra,
-		contentID)
+	rows, err := tx.Query("select ID, Kind, Comment, InMsec, coalesce(ActiveLoop,0) from djmdCue where ContentID=? "+
+		"and rb_local_deleted=0"+extra, contentID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +59,11 @@ func trackCues(tx *sql.Tx, contentID, extra string) ([]cueInfo, error) {
 	for rows.Next() {
 		var id, comment sql.NullString
 		var kind, in sql.NullInt64
-		if err := rows.Scan(&id, &kind, &comment, &in); err != nil {
+		var al int
+		if err := rows.Scan(&id, &kind, &comment, &in, &al); err != nil {
 			return nil, err
 		}
-		out = append(out, cueInfo{id.String, int(kind.Int64), comment.String, int(in.Int64)})
+		out = append(out, cueInfo{id.String, int(kind.Int64), comment.String, int(in.Int64), al == 1})
 	}
 	return out, rows.Err()
 }
@@ -89,6 +91,7 @@ func ptr(v int) *int { return &v }
 // or the track is skipped. Generated cues are deleted; memory cues the user named are kept
 // and never duplicated. Tracks this tool cued before (autoIDs, still unrated): only cues
 // with our names are replaced, so any E/F/G notes the user added survive a re-run.
+// EMERGENCY is written as an active loop unless a cue that stays already is one.
 func ApplyPlan(tx *sql.Tx, plan []PlanTrack, autoIDs map[string]bool) (*Stats, error) {
 	used, err := newIDSource(tx)
 	if err != nil {
@@ -127,11 +130,13 @@ func (w *writer) planTrack(x PlanTrack, autoIDs map[string]bool) error {
 		w.stats.Append("skipped", x.Title)
 		return nil
 	}
-	var kept []cueInfo // memory cues the user named themselves stay
+	var kept []cueInfo  // memory cues the user named themselves stay
+	activeLoop := false // a cue that stays is already the track's active loop
 	for _, c := range cur {
 		if !doomed[c.id] && c.kind == 0 {
 			kept = append(kept, c)
 		}
+		activeLoop = activeLoop || (!doomed[c.id] && c.active)
 		if doomed[c.id] {
 			if _, err := w.tx.Exec("delete from djmdCue where ID=?", c.id); err != nil {
 				return err
@@ -148,7 +153,7 @@ func (w *writer) planTrack(x PlanTrack, autoIDs map[string]bool) error {
 		return nil
 	}
 	for _, c := range x.Hot {
-		if err := ins(hotRow(c)); err != nil {
+		if err := ins(hotRow(c, !activeLoop)); err != nil {
 			return err
 		}
 	}
@@ -191,9 +196,10 @@ func planDoomed(x PlanTrack, cur []cueInfo, found, rerun bool) (doomed map[strin
 	return doomed, true
 }
 
-// hotRow is a planned hot cue's djmdCue row. EMERGENCY is an active loop: BeatLoopSize packs
-// the loop length in beats into bits 16+ (32 beats -> 2097153).
-func hotRow(c PlanHot) cueRow {
+// hotRow is a planned hot cue's djmdCue row. EMERGENCY is a loop, active (ActiveLoop 1: it
+// starts looping when playback reaches it) when active is set: BeatLoopSize packs the loop
+// length in beats into bits 16+ (32 beats -> 2097153).
+func hotRow(c PlanHot, active bool) cueRow {
 	if c.Name != "EMERGENCY" {
 		return cueRow{inMS: c.MS, outMS: -1, kind: c.Kind, color: config.HotColor, comment: c.Name}
 	}
@@ -201,8 +207,12 @@ func hotRow(c PlanHot) cueRow {
 	if loop == 0 {
 		loop = config.EmergencyLoopBeats
 	}
+	al := 0
+	if active {
+		al = 1
+	}
 	return cueRow{inMS: c.MS, outMS: c.OutMS, kind: c.Kind, color: 255, comment: "EMERGENCY",
-		cti: ptr(0), al: ptr(1), bls: ptr(loop<<16 + 1), cms: ptr(0)}
+		cti: ptr(0), al: ptr(al), bls: ptr(loop<<16 + 1), cms: ptr(0)}
 }
 
 func abs(x int) int {

@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/num"
-	"github.com/bitwise-media-group/adj/internal/pairs"
-	"github.com/bitwise-media-group/adj/internal/text"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/pairs"
+	"github.com/bitwise-media-group/auto-dj/internal/text"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 // ErrOrder means a hand-picked order doesn't list every track exactly once.
@@ -49,6 +49,24 @@ func Run(paths config.Paths, playlist, orderSpec string, freeStart bool) (*Resul
 	if err != nil {
 		return nil, err
 	}
+	if orderSpec != "" && orderSpec != "suggested" { // a hand-picked order is checked before loading
+		if _, err := pickOrder(order, orderSpec); err != nil {
+			return nil, err
+		}
+	}
+	recs, cache, err := loadAndHarvest(paths, titles)
+	if err != nil {
+		return nil, err
+	}
+	return Plan(playlist, order, recs, cache, orderSpec, freeStart)
+}
+
+// Plan is Run without the library: the key check, suggested order and set cues for the
+// playlist's tracks in order, with recs holding every track's record. Run and the docs demo
+// (internal/demo) share it.
+func Plan(playlist string, order []db.PlaylistTrack, recs map[string]*tracks.Track, cache *pairs.Cache,
+	orderSpec string, freeStart bool) (*Result, error) {
+	var err error
 	if orderSpec != "" && orderSpec != "suggested" { // a hand-picked order is checked as given
 		if order, err = pickOrder(order, orderSpec); err != nil {
 			return nil, err
@@ -73,10 +91,6 @@ func Run(paths config.Paths, playlist, orderSpec string, freeStart bool) (*Resul
 			re[i] = order[k]
 		}
 		order = re
-	}
-	recs, cache, err := loadAndHarvest(paths, titles)
-	if err != nil {
-		return nil, err
 	}
 	acts := PlanSet(order, recs, cache)
 	lines = append(lines, "", "Set cues (beat @ m:ss; existing = kept as is, new = empty slot, "+

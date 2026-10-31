@@ -6,8 +6,8 @@ package plan
 import (
 	"testing"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/testtrack"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/testtrack"
 )
 
 func TestPlanEncoding(t *testing.T) {

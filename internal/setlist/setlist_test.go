@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/testtrack"
-	"github.com/bitwise-media-group/adj/internal/tracks"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/testtrack"
+	"github.com/bitwise-media-group/auto-dj/internal/tracks"
 )
 
 var cue = testtrack.Cue

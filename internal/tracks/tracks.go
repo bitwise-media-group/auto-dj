@@ -14,11 +14,11 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/bitwise-media-group/adj/internal/anlz"
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/features"
-	"github.com/bitwise-media-group/adj/internal/num"
+	"github.com/bitwise-media-group/auto-dj/internal/anlz"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/features"
+	"github.com/bitwise-media-group/auto-dj/internal/num"
 )
 
 // Track is everything the rules know about one track.

@@ -1,7 +1,7 @@
 // Copyright 2026 BitWise Media Group Ltd
 // SPDX-License-Identifier: MIT
 
-// Package cli is the adj command line: status, features, evaluate, plan, review, apply, set.
+// Package cli is the auto-dj command line: status, features, evaluate, plan, review, apply, set, demo.
 package cli
 
 import (
@@ -14,21 +14,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/db"
-	"github.com/bitwise-media-group/adj/internal/version"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/db"
+	"github.com/bitwise-media-group/auto-dj/internal/version"
 )
 
-const long = `adj (auto dj) places hot cues and memory cues on Rekordbox tracks and prepares sets.
+const long = `auto-dj places hot cues and memory cues on Rekordbox tracks and prepares sets.
 
 Typical run (Rekordbox may stay open until apply):
-    adj status
-    adj features            # decode audio once, cached
-    adj evaluate            # how well the rules match your hand-cued tracks
-    adj plan                # -> <work>/plan.json
-    adj review              # -> <work>/review.html
-    adj apply --write       # quit Rekordbox first; backs up master.db
-    adj set "Melodic Dark"  # key check + set cues (E/G + BASS SWAP) for a playlist`
+    auto-dj status
+    auto-dj features            # decode audio once, cached
+    auto-dj evaluate            # how well the rules match your hand-cued tracks
+    auto-dj plan                # -> <work>/plan.json
+    auto-dj review              # -> <work>/review.html
+    auto-dj apply --write       # quit Rekordbox first; backs up master.db
+    auto-dj set "Dark Mode"     # key check + set cues (E/G + BASS SWAP) for a playlist
+
+See it all on a generated demo set, no Rekordbox needed:
+    auto-dj demo`
 
 type globals struct {
 	rbDir, workDir string
@@ -47,11 +50,11 @@ func expandUser(p string) string {
 	return p
 }
 
-// NewRoot builds the adj command tree.
+// NewRoot builds the auto-dj command tree.
 func NewRoot() *cobra.Command {
 	g := &globals{}
 	root := &cobra.Command{
-		Use:           "adj",
+		Use:           "auto-dj",
 		Short:         "Place hot cues and memory cues on Rekordbox tracks and prepare sets",
 		Long:          long,
 		Version:       version.String(),
@@ -60,7 +63,8 @@ func NewRoot() *cobra.Command {
 	}
 	root.PersistentFlags().StringVar(&g.rbDir, "rb-dir", config.DefaultRBDir(), "folder holding master.db and share/")
 	root.PersistentFlags().StringVar(&g.workDir, "work-dir", config.DefaultWorkDir(), "cache + plan output folder")
-	root.AddCommand(statusCmd(g), featuresCmd(g), evaluateCmd(g), planCmd(g), reviewCmd(g), applyCmd(g), setCmd(g))
+	root.AddCommand(statusCmd(g), featuresCmd(g), evaluateCmd(g), planCmd(g), reviewCmd(g), applyCmd(g), setCmd(g),
+		demoCmd(g))
 	return root
 }
 
@@ -123,12 +127,12 @@ func (c *counter) mostCommon() []string {
 	return out
 }
 
-// errExit is an error whose message is printed as is (no "adj:" prefix), like sys.exit(msg).
+// errExit is an error whose message is printed as is (no "auto-dj:" prefix), like sys.exit(msg).
 type errExit struct{ msg string }
 
 func (e errExit) Error() string { return e.msg }
 
-// Main runs adj and returns the process exit code.
+// Main runs auto-dj and returns the process exit code.
 func Main() int {
 	err := NewRoot().Execute()
 	if err == nil {
@@ -138,7 +142,7 @@ func Main() int {
 	if errors.As(err, &ex) {
 		fmt.Fprintln(os.Stderr, ex.msg)
 	} else {
-		fmt.Fprintln(os.Stderr, "adj:", err)
+		fmt.Fprintln(os.Stderr, "auto-dj:", err)
 	}
 	return 1
 }

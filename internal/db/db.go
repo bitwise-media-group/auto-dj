@@ -25,8 +25,8 @@ import (
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 
-	"github.com/bitwise-media-group/adj/internal/config"
-	"github.com/bitwise-media-group/adj/internal/sqlcipher"
+	"github.com/bitwise-media-group/auto-dj/internal/config"
+	"github.com/bitwise-media-group/auto-dj/internal/sqlcipher"
 )
 
 // DB is a decrypted working copy of master.db.
@@ -72,7 +72,7 @@ func decryptTo(master, dir string) (string, error) {
 
 // ReadCopy opens a decrypted throwaway copy of masterDB. Close removes it.
 func ReadCopy(masterDB string) (*DB, error) {
-	dir, err := os.MkdirTemp("", "adj-read-")
+	dir, err := os.MkdirTemp("", "auto-dj-read-")
 	if err != nil {
 		return nil, err
 	}

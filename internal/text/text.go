@@ -7,6 +7,7 @@ package text
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -36,4 +37,26 @@ func PadLeft(s string, n int) string {
 		return strings.Repeat(" ", n-c) + s
 	}
 	return s
+}
+
+// Slug makes a folder name from s: lower case, each run of anything but letters and digits
+// turned into one '-' ("Melodic Dark (Live)" -> "melodic-dark-live"); "set" when nothing is left.
+func Slug(s string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range strings.ToLower(s) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			if dash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			b.WriteRune(r)
+			dash = false
+		} else {
+			dash = true
+		}
+	}
+	if b.Len() == 0 {
+		return "set"
+	}
+	return b.String()
 }
