@@ -89,13 +89,15 @@ The first track's E is `START` (its first downbeat), and the last track's G is c
 
 `--preview DIR` renders an MP3 of every transition, the whole set as `set.mp3`, and an `index.html` set-list page.
 **Play full set** on the page plays the mix (or tap a track number to start there). It's a dry run built from the
-original audio files: each track from E (the first from START) until it leaves the mix, and once the outgoing track has
-gone, the incoming one returns to its own tempo. Rendering takes about a minute for an hour-long set; `--no-mix` skips
-it. Each transition clip is the same mix of just those two tracks:
+original audio files: each track from E (the first from START) until it leaves the mix. The whole set plays at a fixed
+128 BPM, every track time-stretched with the key kept; `--bpm N` picks another tempo, and `--bpm 0` beat-matches each
+incoming track to the outgoing one instead, returning it to its own tempo once the outgoing track has gone. Rendering
+takes about a minute for an hour-long set; `--no-mix` skips it. Each transition clip is the same mix of just those two
+tracks:
 
 - The outgoing track plays from 8 beats before it reaches G.
-- The incoming track starts at E, time-stretched to the outgoing tempo with the key kept, and fades in over 8 beats. On
-  a `SYNC` it comes in at full volume instead.
+- The incoming track starts at E, beat-matched (both at the set tempo, or with `--bpm 0` the incoming one stretched to
+  the outgoing tempo), and fades in over 8 beats. On a `SYNC` it comes in at full volume instead.
 - At the bass swap the bass moves across (the track without the bass is low-cut).
 - The outgoing track leaves on its `FILTER` (low-pass sweep to silence over 8 beats, then a 4-beat fade out) or `CUT`
   (immediate cut), else it fades out over 8 beats from the bass swap. The clip ends 8 beats later.

@@ -71,7 +71,7 @@ h1{font-family:var(--display);font-weight:700;font-size:2.3rem;margin:0;letter-s
 <div class="wrap">
   <header>
     <h1 id="h"></h1>
-    <p class="lede">Running order with the set cues. Play full set runs the whole set from the original tracks, mixed on these cues; tap a track number to start from there. Press play on a transition to hear just that one: the outgoing track plays from 8 beats before its OUT (G), the next track comes in at its IN (E), beat-matched to the outgoing tempo and fading in over 8 beats. At the bass swap the bass moves across. The outgoing track then leaves on its FILTER (a low-pass sweep to silence over 8 beats, then a 4-beat fade) or CUT, else it fades out over 8 beats from the bass swap. On a SYNC the next track comes in at full volume, and tracks follow their JUMPs.</p>
+    <p class="lede">Running order with the set cues. Play full set runs the whole set from the original tracks, mixed on these cues; tap a track number to start from there. Press play on a transition to hear just that one: the outgoing track plays from 8 beats before its OUT (G), the next track comes in at its IN (E), beat-matched and fading in over 8 beats. At the bass swap the bass moves across. The outgoing track then leaves on its FILTER (a low-pass sweep to silence over 8 beats, then a 4-beat fade) or CUT, else it fades out over 8 beats from the bass swap. On a SYNC the next track comes in at full volume, and tracks follow their JUMPs.<span id="tempo"></span></p>
     <div class="mixhead" id="mixhead" hidden><button class="go" id="go" type="button"><svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg><span>Play full set</span></button><span class="mixmeta" id="mixmeta"></span></div>
     <div class="legend"><span><i style="background:var(--out)"></i>Outgoing</span><span><i style="background:var(--in)"></i>Incoming</span><span><i style="background:var(--bass)"></i>Bass swap</span><span><i style="background:var(--filter)"></i>Filter</span><span>Ticks: bars · tall ticks: 16-beat phrases</span></div>
   </header>
@@ -86,6 +86,9 @@ h1{font-family:var(--display);font-weight:700;font-size:2.3rem;margin:0;letter-s
 <script>
 const D = __DATA__;
 document.getElementById('h').textContent = D.playlist;
+document.getElementById('tempo').textContent = D.bpm
+  ? ` Everything plays at ${Number(D.bpm).toFixed(D.bpm%1?2:0)} BPM, time-stretched with the key kept.`
+  : ' The incoming track is stretched to the outgoing tempo, then returns to its own once the outgoing track has gone.';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const mmss=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const PLAY='<svg viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z"/></svg>', PAUSE='<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>';

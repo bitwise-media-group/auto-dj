@@ -67,10 +67,21 @@ func (s *Seg) playOut() float64 {
 	return s.End
 }
 
+// tempoRate is t's stretch to the set's fixed tempo bpm (1, its own tempo, when bpm is 0).
+func tempoRate(t *tracks.Track, bpm float64) float64 {
+	if bpm <= 0 {
+		return 1
+	}
+	return bpm / math.Max(t.BPM, 1)
+}
+
 // MixTimeline plans the full-set mix. One Seg per track in order; tracks without local audio
 // are Missing and the mix leaves a short gap (the previous track plays to its end).
 // leadIn > 0 starts the first track this many beats before it reaches its G (transition clips).
-func MixTimeline(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track, leadIn int) []*Seg {
+// bpm > 0 plays every track at that fixed tempo (key kept); 0 keeps each track at its own
+// tempo once the previous one has gone.
+func MixTimeline(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track, leadIn int,
+	bpm float64) []*Seg {
 	var segs []*Seg
 	var prev *Seg // the playing track's segment, while the next one can still mix into it
 	tFree := 0.0  // where the next track starts when there's no transition into it
@@ -97,11 +108,11 @@ func MixTimeline(order []db.PlaylistTrack, actions []setlist.Action, recs map[st
 			if prev != nil {
 				tFree = prev.playOut() + GapS
 			}
-			seg.Start, seg.Clock = tFree, newClock(tFree, seg.p0, 1)
+			seg.Start, seg.Clock = tFree, newClock(tFree, seg.p0, tempoRate(t, bpm))
 			prev = seg
 			continue
 		}
-		transition(prev, seg, actions[i-1], act, pg)
+		transition(prev, seg, actions[i-1], act, pg, bpm)
 		prev = seg
 	}
 	if prev != nil {
@@ -144,14 +155,15 @@ func (s *Seg) setJumps() {
 }
 
 // transition beat-matches seg into prev, which reaches its G at playback second pg.
-func transition(prev, seg *Seg, pact, act setlist.Action, pg float64) {
+func transition(prev, seg *Seg, pact, act setlist.Action, pg, bpm float64) {
 	a, ca, ra := prev.Rec, prev.Clock, prev.Route
 	t, route, e := seg.Rec, seg.Route, seg.E
 	tg := ca.Out(pg)
-	rate := a.BPM * ca.RateAt(tg) / t.BPM // this track stretched to the playing tempo
-	clock := newClock(tg, 0, rate)
-	// stretched until the outgoing track has left (set below)
-	clock.Split = math.Inf(1)
+	clock := newClock(tg, 0, tempoRate(t, bpm)) // a fixed tempo: already beat-matched
+	if bpm <= 0 {
+		// stretched to the playing tempo until the outgoing track has left (set below)
+		clock.Rate, clock.Split = a.BPM*ca.RateAt(tg)/t.BPM, math.Inf(1)
+	}
 	spb := func(m float64) float64 { return 60 / (a.BPM * ca.RateAt(m)) } // one beat in mix seconds
 	outB := func(b int) (float64, bool) {
 		q, ok := route.Play(beatTime(t, b), 0)
@@ -199,7 +211,7 @@ func transition(prev, seg *Seg, pact, act setlist.Action, pg float64) {
 	if ts < x1 {
 		prev.BassOut = f(ts)
 	}
-	clock.Split = x1
+	clock.Split = math.Min(clock.Split, x1)
 	seg.Sync = act.Sync // instant mashup: in at full volume
 	if !seg.Sync {
 		seg.FadeIn = &[2]float64{tg, math.Min(tg+FadeIn*spb(tg), x1)}
@@ -209,10 +221,11 @@ func transition(prev, seg *Seg, pact, act setlist.Action, pg float64) {
 
 // PairTimeline is one transition clip: MixTimeline of A -> B with A from Lead beats before
 // it reaches G (after its jumps from E), ending Tail beats after A has left.
-func PairTimeline(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track) (sa, sb *Seg) {
-	segs := MixTimeline(order, actions, recs, Lead)
+func PairTimeline(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track,
+	bpm float64) (sa, sb *Seg) {
+	segs := MixTimeline(order, actions, recs, Lead, bpm)
 	sa, sb = segs[0], segs[1]
-	end := sa.End + Tail*60/sa.Rec.BPM
+	end := sa.End + Tail*60/(sa.Rec.BPM*sa.Clock.Own)
 	if sb.End > end {
 		sb.End, sb.Exit = end, ExitPlan{"end", []float64{end}}
 		var j []float64

@@ -80,7 +80,7 @@ func recsOf(a, b *tracks.Track) map[string]*tracks.Track {
 func TestMixTimelineFilter(t *testing.T) {
 	a, b, order, acts := mixPair(t, &setlist.Exit{Name: "FILTER", A: 113, B: 33, Side: "out"})
 	touch(t, a, b)
-	segs := MixTimeline(order, acts, recsOf(a, b), 0)
+	segs := MixTimeline(order, acts, recsOf(a, b), 0, 0)
 	sa, sb := segs[0], segs[1]
 	const spb = 0.5              // 120 BPM
 	if !near(sb.Start, 96*spb) { // B's E plays at A's G
@@ -110,16 +110,45 @@ func TestMixTimelineFilter(t *testing.T) {
 	}
 }
 
+func TestMixTimelineFixedTempo(t *testing.T) {
+	a, b, order, acts := mixPair(t, &setlist.Exit{Name: "FILTER", A: 113, B: 33, Side: "out"})
+	touch(t, a, b)
+	segs := MixTimeline(order, acts, recsOf(a, b), 0, 128)
+	sa, sb := segs[0], segs[1]
+	const spb = 60.0 / 128
+	if !near(sa.Clock.Rate, 128.0/120) || !near(sa.Clock.Own, 128.0/120) {
+		t.Errorf("A rate %v/%v", sa.Clock.Rate, sa.Clock.Own)
+	}
+	// B stays at the set's tempo after A has gone: no split
+	if !near(sb.Clock.Rate, 128.0/125) || !near(sb.Clock.Own, 128.0/125) || sb.Clock.Split != sb.Start {
+		t.Errorf("B rate %v/%v split %v", sb.Clock.Rate, sb.Clock.Own, sb.Clock.Split)
+	}
+	if !near(sb.Start, 96*spb) {
+		t.Errorf("B starts at %v", sb.Start)
+	}
+	nearAll(t, "exit", sa.Exit.Xs, []float64{112 * spb, 120 * spb, 124 * spb})
+	if !near(*sa.SwapT, (96+16)*spb) {
+		t.Errorf("swap %v", *sa.SwapT)
+	}
+	if want := sb.Start + (80-16*60.0/125)*125/128; !near(sb.End, want) { // B's audio from E, at 128
+		t.Errorf("B ends at %v, want %v", sb.End, want)
+	}
+	pa, pb := PairTimeline(order, acts, recsOf(a, b), 128)
+	if !near(pb.Start, Lead*spb) || !near(pb.End, pa.End+Tail*spb) {
+		t.Errorf("pair start %v end %v", pb.Start, pb.End)
+	}
+}
+
 func TestMixTimelineCutAndMissingAudio(t *testing.T) {
 	a, b, order, acts := mixPair(t, &setlist.Exit{Name: "CUT", A: 105, B: 25, Side: "out"})
 	touch(t, a)
-	segs := MixTimeline(order, acts, recsOf(a, b), 0)
+	segs := MixTimeline(order, acts, recsOf(a, b), 0, 0)
 	// no B audio: A plays to its end
 	if !segs[1].Missing || segs[0].Exit.Kind != "end" || segs[0].Exit.Xs[0] != segs[0].End {
 		t.Errorf("missing B: %v %v", segs[1].Missing, segs[0].Exit)
 	}
 	touch(t, b)
-	segs = MixTimeline(order, acts, recsOf(a, b), 0)
+	segs = MixTimeline(order, acts, recsOf(a, b), 0, 0)
 	sa, sb := segs[0], segs[1]
 	// cut before the swap at beat 113
 	if sa.Exit.Kind != "cut" || sa.Exit.Xs[0] != 52 || sa.Exit.Xs[1] != 52 || sa.BassOut != nil {
@@ -134,7 +163,7 @@ func TestMixTimelineSyncStartsAtFullVolume(t *testing.T) {
 	a, b, order, acts := mixPair(t, nil)
 	acts[1].Sync = true
 	touch(t, a, b)
-	segs := MixTimeline(order, acts, recsOf(a, b), 0)
+	segs := MixTimeline(order, acts, recsOf(a, b), 0, 0)
 	sa, sb := segs[0], segs[1]
 	if !sb.Sync || sb.FadeIn != nil || !near(sb.Start, 48) {
 		t.Errorf("sync %v fade %v start %v", sb.Sync, sb.FadeIn, sb.Start)
@@ -187,13 +216,13 @@ func TestMixTimelineFollowsJumps(t *testing.T) {
 	a, b, order, acts := mixPair(t, &setlist.Exit{Name: "FILTER", A: 113, B: 33, Side: "out"})
 	touch(t, a, b)
 	a.Cues = []db.Cue{cue(a, 33, "JUMP", 0), cue(a, 49, "JUMP", 7)} // skips 16 beats (8 s) before G
-	segs := MixTimeline(order, acts, recsOf(a, b), 0)
+	segs := MixTimeline(order, acts, recsOf(a, b), 0, 0)
 	sa, sb := segs[0], segs[1]
 	nearAll(t, "jumps", sa.Jumps, []float64{16})
 	if !near(sb.Start, 40) || !near(sa.Exit.Xs[0], 48) { // all 8 s earlier
 		t.Errorf("start %v exit %v", sb.Start, sa.Exit.Xs)
 	}
-	pa, pb := PairTimeline(order, acts, recsOf(a, b)) // from 8 beats before G: no jump
+	pa, pb := PairTimeline(order, acts, recsOf(a, b), 0) // from 8 beats before G: no jump
 	if pa.Start != 0 || !near(pb.Start, 4) || len(pa.Jumps) != 0 {
 		t.Errorf("pair start %v/%v jumps %v", pa.Start, pb.Start, pa.Jumps)
 	}
@@ -201,7 +230,7 @@ func TestMixTimelineFollowsJumps(t *testing.T) {
 		t.Errorf("pair end %v exit %v", pb.End, pb.Exit)
 	}
 	a.Cues = []db.Cue{cue(a, 93, "JUMP", 0), cue(a, 33, "JUMP", 7)} // 4 beats before G, back 60 beats
-	pa, pb = PairTimeline(order, acts, recsOf(a, b))
+	pa, pb = PairTimeline(order, acts, recsOf(a, b), 0)
 	if !near(pb.Start, 4) || len(pa.Jumps) != 0 { // the clip starts after the jump back
 		t.Errorf("pair start %v jumps %v", pb.Start, pa.Jumps)
 	}
@@ -278,18 +307,20 @@ func TestRenderSet(t *testing.T) {
 			t.Fatalf("ffmpeg: %v %s", err, out)
 		}
 	}
-	segs := MixTimeline(order, acts, recsOf(a, b), 0)
-	out, err := RenderSet(segs, filepath.Join(t.TempDir(), "set.mp3"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	probe, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
-		out).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	dur, _ := strconv.ParseFloat(strings.TrimSpace(string(probe)), 64)
-	if want, _ := MixInfo(segs); math.Abs(dur-want) > 0.2 {
-		t.Errorf("set.mp3 is %v s, timeline says %v s", dur, want)
+	for _, bpm := range []float64{0, 128} {
+		segs := MixTimeline(order, acts, recsOf(a, b), 0, bpm)
+		out, err := RenderSet(segs, filepath.Join(t.TempDir(), "set.mp3"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		probe, err := exec.Command("ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+			out).Output()
+		if err != nil {
+			t.Fatal(err)
+		}
+		dur, _ := strconv.ParseFloat(strings.TrimSpace(string(probe)), 64)
+		if want, _ := MixInfo(segs); math.Abs(dur-want) > 0.2 {
+			t.Errorf("bpm %v: set.mp3 is %v s, timeline says %v s", bpm, dur, want)
+		}
 	}
 }

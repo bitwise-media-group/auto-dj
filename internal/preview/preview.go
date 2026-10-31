@@ -9,8 +9,9 @@
 // swap B's bass is filtered out; at the bass swap the bass moves to B (A is low-cut). A leaves
 // the mix on its exit (setlist.Action.Exit): on FILTER a low-pass sweep to silence over 8
 // beats, then a fade out over 4 beats; on CUT an immediate cut; with neither, a fade out over
-// 8 beats from the bass swap. Once A has gone B returns to its own tempo. The last track plays
-// to its end. The bass swap point is the planned BASS SWAP, else 32 beats after E.
+// 8 beats from the bass swap. Once A has gone B returns to its own tempo. With a fixed set
+// tempo (Build's bpm) every track plays at that tempo throughout instead, key kept. The last
+// track plays to its end. The bass swap point is the planned BASS SWAP, else 32 beats after E.
 //
 // Every track follows its jumps: on reaching a JUMP memory cue playback goes to the JUMP hot
 // cue (JumpRoute).
@@ -103,6 +104,7 @@ type pageMix struct {
 
 type pageData struct {
 	Playlist string      `json:"playlist"`
+	BPM      float64     `json:"bpm,omitempty"` // the set's fixed tempo
 	Tracks   []pageTrack `json:"tracks"`
 	Pairs    []any       `json:"pairs"`
 	Mix      *pageMix    `json:"mix"`
@@ -114,14 +116,15 @@ func exists(p string) bool {
 }
 
 // Build renders every transition (and, with mix, the whole set as set.mp3) into outDir and
-// writes index.html + set.json. It returns the page's path.
+// writes index.html + set.json. bpm > 0 plays everything at that fixed tempo (key kept); 0
+// beat-matches each incoming track to the outgoing one. It returns the page's path.
 func Build(playlist string, order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track,
-	outDir string, mix bool) (string, error) {
+	outDir string, mix bool, bpm float64) (string, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err
 	}
 	var err error
-	data := pageData{Playlist: playlist, Tracks: []pageTrack{}, Pairs: []any{}}
+	data := pageData{Playlist: playlist, BPM: max(bpm, 0), Tracks: []pageTrack{}, Pairs: []any{}}
 	for i, x := range order {
 		data.Tracks = append(data.Tracks, newPageTrack(i, x, actions[i], recs[x.ID]))
 	}
@@ -133,13 +136,13 @@ func Build(playlist string, order []db.PlaylistTrack, actions []setlist.Action, 
 			continue
 		}
 		var p pagePair
-		if p, err = renderPair(order[i:i+2], actions[i:i+2], recs, outDir, i); err != nil {
+		if p, err = renderPair(order[i:i+2], actions[i:i+2], recs, outDir, i, bpm); err != nil {
 			return "", err
 		}
 		data.Pairs = append(data.Pairs, p)
 	}
 	if mix {
-		if data.Mix, err = renderMix(order, actions, recs, outDir); err != nil {
+		if data.Mix, err = renderMix(order, actions, recs, outDir, bpm); err != nil {
 			return "", err
 		}
 	}
@@ -190,8 +193,8 @@ func newPageTrack(i int, x db.PlaylistTrack, act setlist.Action, t *tracks.Track
 
 // renderMix renders the full-set mix as set.mp3 (nil when no track has local audio).
 func renderMix(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track,
-	outDir string) (*pageMix, error) {
-	segs := MixTimeline(order, actions, recs, 0)
+	outDir string, bpm float64) (*pageMix, error) {
+	segs := MixTimeline(order, actions, recs, 0, bpm)
 	if !slices.ContainsFunc(segs, func(s *Seg) bool { return !s.Missing }) {
 		return nil, nil
 	}
@@ -203,10 +206,14 @@ func renderMix(order []db.PlaylistTrack, actions []setlist.Action, recs map[stri
 }
 
 func renderPair(order []db.PlaylistTrack, actions []setlist.Action, recs map[string]*tracks.Track, outDir string,
-	i int) (pagePair, error) {
+	i int, bpm float64) (pagePair, error) {
 	a, b := recs[order[0].ID], recs[order[1].ID]
 	A, B := actions[0], actions[1]
-	sa, sb := PairTimeline(order, actions, recs)
+	sa, sb := PairTimeline(order, actions, recs, bpm)
+	play := a.BPM // the tempo B is matched to
+	if bpm > 0 {
+		play = bpm
+	}
 	name := fmt.Sprintf("%02d-%02d.mp3", i+1, i+2)
 	if _, err := RenderSet([]*Seg{sa, sb}, filepath.Join(outDir, name)); err != nil {
 		return pagePair{}, err
@@ -224,7 +231,7 @@ func renderPair(order []db.PlaylistTrack, actions []setlist.Action, recs map[str
 	p := pagePair{
 		I: i, File: name, Dur: r(sb.End), BOffset: r(sb.Start), FadeIn: fadeIn, SwapT: r2(sa.SwapT),
 		FadeOut: []float64{r(xs[0]), r(xs[len(xs)-1])}, Exit: sa.Exit.Kind, Sync: sb.Sync, Jumps: [][]any{},
-		BeatS: num.RoundTo(60/a.BPM, 4), BPM: a.BPM, Tempo: num.RoundTo(a.BPM/b.BPM, 4),
+		BeatS: num.RoundTo(60/play, 4), BPM: play, Tempo: num.RoundTo(play/b.BPM, 4),
 		G: A.G.Beat, E: B.E.Beat, SwapB: swapB, EstimatedSwap: sa.EstimatedSwap,
 		GTime: setlist.MinSec(beatTime(a, A.G.Beat)), ETime: setlist.MinSec(beatTime(b, B.E.Beat)),
 		SwapTime: setlist.MinSec(beatTime(b, swapB)),

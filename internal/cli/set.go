@@ -26,6 +26,7 @@ type setPlan struct {
 
 func setCmd(g *globals) *cobra.Command {
 	var order, previewDir, out string
+	var bpm float64
 	var freeStart, reorder, noMix, write bool
 	cmd := &cobra.Command{
 		Use:   "set [playlist]",
@@ -67,7 +68,7 @@ func setCmd(g *globals) *cobra.Command {
 			}
 			fmt.Printf("\nset plan written to %s\n", dest)
 			if previewDir != "" {
-				page, err := preview.Build(playlist, res.Order, res.Actions, res.Recs, expandUser(previewDir), !noMix)
+				page, err := preview.Build(playlist, res.Order, res.Actions, res.Recs, expandUser(previewDir), !noMix, bpm)
 				if err != nil {
 					return err
 				}
@@ -111,6 +112,8 @@ func setCmd(g *globals) *cobra.Command {
 	f.BoolVar(&reorder, "reorder", false, "with --write: also save the order to the playlist")
 	f.StringVar(&previewDir, "preview", "", "render transition previews, the full-set mix and a set-list page into `DIR`")
 	f.BoolVar(&noMix, "no-mix", false, "with --preview: skip the full-set mix (set.mp3)")
+	f.Float64Var(&bpm, "bpm", 128, "with --preview: play the mix and clips at this fixed tempo, key kept "+
+		"(0: each track at its own tempo)")
 	f.StringVar(&out, "out", "", "set plan file (default <work>/set-plan.json)")
 	f.BoolVar(&write, "write", false, "write the cues (Rekordbox quit)")
 	return cmd

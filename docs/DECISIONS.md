@@ -230,11 +230,14 @@ before that track's drop.
 Playing the original files live in the browser was ruled out: the library is AIFF, which Chrome can't play, and a page
 opened from disk can't run local files through Web Audio filters (the output is silenced). The mix follows the preview
 rules end to end: each track plays from E (START for the first) until it leaves. The incoming track is stretched to the
-playing tempo until the outgoing one has gone, then returns to its own tempo with a 20 ms crossfade. If the outgoing
-track leaves before the swap, the incoming bass comes in when it leaves. A track without local audio leaves a 1 s gap,
-and the track before it plays to its end. The output is streamed through ffmpeg a track at a time, with a fixed 0.85
-gain and a soft knee at 0.8 instead of normalising. "Melodic Dark" (14 tracks) renders to 56 minutes and 67 MB in about
-50 s.
+playing tempo until the outgoing one has gone, then returns to its own tempo with a 20 ms crossfade. Since 2026-10-30
+(user decision) the default is a fixed set tempo instead: `--bpm 128`, every track stretched with ffmpeg `atempo` (key
+kept) for its whole time in the mix, so the tempo never drifts with the running order. `--bpm 0` restores the
+follow-the-outgoing-track behaviour above. It only affects the previews; cue placement is in beats either way. If the
+outgoing track leaves before the swap, the incoming bass comes in when it leaves. A track without local audio leaves a 1
+s gap, and the track before it plays to its end. The output is streamed through ffmpeg a track at a time, with a fixed
+0.85 gain and a soft knee at 0.8 instead of normalising. "Melodic Dark" (14 tracks) renders to 56 minutes and 67 MB in
+about 50 s.
 
 **Ownership of E/G (user decision, 2026-10-14).** A set owns E and G on its tracks. It overwrites E/G that belong to
 other sets, fixes misaligned pairs by moving E onto the phrase, and clears the last track's G. It never touches F, which
@@ -247,7 +250,8 @@ B, so both follow the same rules. The clip is beat-matched to the outgoing track
 
 - A plays from 8 beats before it reaches G (after any jumps from its E).
 - B enters at E, stretched by A BPM / B BPM using ffmpeg `atempo`, which keeps the key, and fades in over 8 beats. On a
-  SYNC there's no fade-in: B comes in at full volume.
+  SYNC there's no fade-in: B comes in at full volume. With a fixed set tempo (the default, `--bpm 128`) A and B are both
+  stretched to it instead.
 - Until the bass swap, B is low-cut at 180 Hz. At the swap, A is low-cut instead (30 ms crossfade).
 - A leaves the mix on its exit (user decision, 2026-10-17). On FILTER it's a log low-pass sweep from 16 kHz to 20 Hz
   (effectively silent) over 8 beats (STFT, 24 dB/oct), then a 4-beat fade out. On CUT it's an immediate cut on the beat

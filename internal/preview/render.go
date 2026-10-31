@@ -225,7 +225,7 @@ func renderTrack(s *Seg) (Stereo, error) {
 }
 
 // decodeSeg decodes the track's audio for [Start, End): stretched until the clock's split,
-// at its own tempo after, with a short crossfade where the tempo goes back to normal.
+// at its own (or the set's fixed) tempo after, with a short crossfade where the tempo changes.
 func decodeSeg(s *Seg) (Stereo, error) {
 	c, path, route := s.Clock, s.Rec.Path, s.Route
 	n := num.Round((s.End - s.Start) * SR)
@@ -241,7 +241,7 @@ func decodeSeg(s *Seg) (Stereo, error) {
 		if n-preN > 0 {
 			y = head[:min(preN, len(head))]
 			tail := head[len(y):]
-			rest, err := decodeRoute(path, route, c.SrcSplit(), s.End-s.Start-pre, 1)
+			rest, err := decodeRoute(path, route, c.SrcSplit(), s.End-s.Start-pre, c.Own)
 			if err != nil {
 				return nil, err
 			}
@@ -255,7 +255,7 @@ func decodeSeg(s *Seg) (Stereo, error) {
 			y = append(slices.Clip(y), rest...)
 		}
 	} else if n-preN > 0 {
-		rest, err := decodeRoute(path, route, c.SrcSplit(), s.End-s.Start-pre, 1)
+		rest, err := decodeRoute(path, route, c.SrcSplit(), s.End-s.Start-pre, c.Own)
 		if err != nil {
 			return nil, err
 		}

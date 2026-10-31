@@ -166,12 +166,14 @@ func JumpRoute(t *tracks.Track, start float64, keep ...float64) *Route {
 }
 
 // Clock maps source seconds to mix seconds for one track: stretched by Rate (source s per
-// mix s) until mix time Split (when the previous track has left), at its own tempo after.
+// mix s) until mix time Split (when the previous track has left), by Own after (1 at its own
+// tempo, else the stretch to the set's fixed tempo).
 type Clock struct {
-	Out0, Src0, Rate, Split float64
+	Out0, Src0, Rate, Split, Own float64
 }
 
-func newClock(out0, src0, rate float64) *Clock { return &Clock{out0, src0, rate, out0} }
+// newClock plays at rate throughout.
+func newClock(out0, src0, rate float64) *Clock { return &Clock{out0, src0, rate, out0, rate} }
 
 // SrcSplit is the source second playing at Split.
 func (c *Clock) SrcSplit() float64 { return c.Src0 + (c.Split-c.Out0)*c.Rate }
@@ -181,7 +183,7 @@ func (c *Clock) Out(src float64) float64 {
 	if src < c.SrcSplit() {
 		return c.Out0 + (src-c.Src0)/c.Rate
 	}
-	return c.Split + (src - c.SrcSplit())
+	return c.Split + (src-c.SrcSplit())/c.Own
 }
 
 // RateAt is the stretch at mix second t.
@@ -189,5 +191,5 @@ func (c *Clock) RateAt(t float64) float64 {
 	if t < c.Split {
 		return c.Rate
 	}
-	return 1
+	return c.Own
 }
