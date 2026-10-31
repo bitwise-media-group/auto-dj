@@ -1,0 +1,43 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# The org's self-hosted Renovate bot, run against this repository only on its own
+# schedule. issues/pull_request [edited] react to a checkbox tick in the Dependency
+# Dashboard or a Renovate PR body; Renovate's own edits never re-trigger a run.
+name: Renovate
+
+on:
+  schedule:
+    - cron: "24 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Dry-run mode: empty (live), "extract", "lookup", or "full".'
+        required: false
+        default: ""
+        type: string
+      log-level:
+        description: Renovate log level.
+        required: false
+        default: info
+        type: choice
+        options:
+          - info
+          - debug
+  issues:
+    types: [edited]
+  pull_request:
+    types: [edited]
+
+# the App token does the privileged work; the caller grants nothing
+permissions: {}
+
+jobs:
+  renovate:
+    uses: bitwise-media-group/github-workflows/.github/workflows/renovate.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0
+    with:
+      app-client-id: ${{ vars.RENOVATE_CLIENT_ID }}
+      dry-run: ${{ inputs.dry-run || '' }}
+      log-level: ${{ inputs.log-level || 'info' }}
+    secrets:
+      app-private-key: ${{ secrets.RENOVATE_PRIVATE_KEY }}

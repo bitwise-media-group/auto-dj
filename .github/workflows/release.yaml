@@ -1,0 +1,60 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Release -- release-please keeps a release PR current from the Conventional Commit
+# history; merging it cuts a draft vX.Y.Z release. Then `mise run release --draft`
+# (GoReleaser, .goreleaser.yaml) builds the archives, checksums and SBOMs,
+# Developer ID-signs and notarizes the darwin binaries, cosign-signs every binary
+# and opens the Homebrew cask PR, and the workflow attests build provenance and
+# publishes the release last. `mise run docs-build` (which renders the demo set
+# first) rebuilds the docs site, published to GitHub Pages on the same release.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # allow cutting a release manually from the Actions tab
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release:
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0
+    # Ceiling for the reusable workflow's release-please + goreleaser + docs jobs.
+    # GitHub resolves a reusable workflow's permissions as the union of every job
+    # and ignores `if:`, so every scope is granted even when a job is skipped.
+    permissions:
+      # create the release/tag and upload assets
+      contents: write
+      # release-please creates pr labels via the issues api
+      issues: write
+      # release-please opens the release pull request
+      pull-requests: write
+      # cosign keyless signing (goreleaser) + the docs job's Pages OIDC deploy
+      id-token: write
+      # github build-provenance attestation
+      attestations: write
+      # artifact storage record for the attestation
+      artifact-metadata: write
+      # push container images to ghcr (goreleaser dockers_v2; none configured here)
+      packages: write
+      # publish the docs site to GitHub Pages (docs job, gated on zensical.toml)
+      pages: write
+    with:
+      # author the release PR as the FF Merge App so it can auto-merge (a
+      # GITHUB_TOKEN-authored push fires no workflow_run to trigger the merge);
+      # required here, since the same App mints the Homebrew tap token
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
+      # Apple signing + notarization of the darwin binaries (notarize.macos in
+      # .goreleaser.yaml). Org secrets scoped to the notarizing repos: the shared
+      # open-source Developer ID Application certificate (+ its export password)
+      # and the App Store Connect team API key -- see the github-workflows README,
+      # "macOS notarization: org setup".
+      macos-sign-p12: ${{ secrets.MACOS_SIGN_P12 }}
+      macos-sign-password: ${{ secrets.MACOS_SIGN_PASSWORD }}
+      macos-notary-issuer-id: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+      macos-notary-key-id: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+      macos-notary-key: ${{ secrets.MACOS_NOTARY_KEY }}

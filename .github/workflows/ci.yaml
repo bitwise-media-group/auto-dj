@@ -1,0 +1,20 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Continuous integration -- the reusable ci workflow runs the canonical mise tasks
+# (lint, build, test) as one job each, with Go, ffmpeg and every dev CLI installed
+# from the mise pins (root mise.toml + the .mise/ toolchain submodule), and uploads
+# the test coverage to Codecov.
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0

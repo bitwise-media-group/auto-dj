@@ -1,0 +1,224 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# GoReleaser config. Releases are cut by release-please: when its release PR merges,
+# the reusable release workflow (.github/workflows/release.yaml) pushes the vX.Y.Z
+# tag, leaves a draft GitHub release, and runs `goreleaser release --draft` — which
+# adopts that draft (use_existing_draft + mode: replace below) and publishes it last.
+# Build locally without publishing, signing or notarizing via `mise run snapshot`.
+#
+# Produces binary archives + checksums + SBOMs, Developer ID-signed and notarized
+# darwin binaries, a keyless cosign bundle over every binary (signed after
+# notarization, so it covers the shipped bytes), and a Homebrew cask in
+# bitwise-media-group/homebrew-tap. auto-dj reads Rekordbox's
+# master.db from ~/Library/Pioneer, so macOS is the platform that matters; the
+# linux builds run the demo, docs and feature pipeline (CI renders the docs demo on
+# linux). syft and cosign come from the toolchain submodule's pins
+# (.mise/config.toml), which mise puts on PATH for whoever runs goreleaser.
+version: 2
+
+# ^ref: https://goreleaser.com/errors/multiple-tokens/
+force_token: github
+
+project_name: auto-dj
+
+before:
+  hooks:
+    - go mod download
+
+env:
+  # pure Go throughout (internal/sqlcipher + modernc.org/sqlite), so every target
+  # cross-compiles from the linux runner
+  - CGO_ENABLED=0
+
+builds:
+  - id: auto-dj
+    main: ./cmd/auto-dj
+    binary: auto-dj
+    flags:
+      - -trimpath
+    # the same vars and import path as the go archetype's build.sh, so a release
+    # binary and `mise run build` report their version identically (v-prefixed)
+    ldflags: &ldflags
+      - -s -w
+      - -X github.com/bitwise-media-group/auto-dj/internal/version.Version=v{{ .Version }}
+      - -X github.com/bitwise-media-group/auto-dj/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/bitwise-media-group/auto-dj/internal/version.BuildDate={{ .Date }}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+  # darwin is split into one build id per arch so each arch gets its own
+  # notarize.macos entry below: goreleaser notarizes entries concurrently but the
+  # binaries within one entry serially, and each submission's wait is capped at
+  # 20m, so one entry per arch keeps the whole step inside a single 20m window.
+  # Archive names are unchanged (the template keys on ProjectName/Os/Arch, not the
+  # id), and the cosign entry under sboms signs all three ids.
+  - id: auto-dj-darwin-amd64
+    main: ./cmd/auto-dj
+    binary: auto-dj
+    flags:
+      - -trimpath
+    ldflags: *ldflags
+    goos:
+      - darwin
+    goarch:
+      - amd64
+  - id: auto-dj-darwin-arm64
+    main: ./cmd/auto-dj
+    binary: auto-dj
+    flags:
+      - -trimpath
+    ldflags: *ldflags
+    goos:
+      - darwin
+    goarch:
+      - arm64
+
+archives:
+  - id: auto-dj
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+# ^ref: https://goreleaser.com/customization/sign/notarize/
+# Developer ID signing + Apple notarization of the darwin binaries, done
+# cross-platform by goreleaser's embedded quill (no macOS runner). The certificate
+# and API key arrive as env from the reusable release workflow, from the org
+# secrets shared by every open-source repo that notarizes (github-workflows README
+# -> "macOS notarization: org setup").
+# enabled: every real release notarizes and fails if the secrets are missing (a
+# published release is never un-notarized); a snapshot only does when
+# MACOS_SIGN_P12 is exported, and `mise run snapshot` skips it even then, so a
+# local end-to-end test means running goreleaser by hand with the secrets set.
+# One entry per darwin build id (see builds): both arches are submitted to Apple at
+# once, so the step takes one notarization wait, not two back to back. The sign and
+# notarize blocks are anchored on the first entry and aliased by the second.
+notarize:
+  macos:
+    - enabled: '{{ or (not .IsSnapshot) (isEnvSet "MACOS_SIGN_P12") }}'
+      ids: [auto-dj-darwin-amd64]
+      sign: &darwin_sign
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize: &darwin_notarize
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+        wait: true
+        # 20m is the hard ceiling (`goreleaser check` rejects more: the App Store
+        # Connect JWT is capped at 20 minutes and quill does not refresh it), and
+        # Apple has taken longer than 15m before.
+        timeout: 20m
+    - enabled: '{{ or (not .IsSnapshot) (isEnvSet "MACOS_SIGN_P12") }}'
+      ids: [auto-dj-darwin-arm64]
+      sign: *darwin_sign
+      notarize: *darwin_notarize
+
+sboms:
+  - artifacts: archive
+    cmd: syft
+    args:
+      - $artifact
+      - --output
+      - spdx-json=$document
+  # Keyless cosign bundles over every binary, hosted in the sboms pipe on purpose:
+  # it is the only OSS hook that both reaches the raw build binaries and runs AFTER
+  # notarize. binary_signs runs before notarize, which rewrites the darwin Mach-O in
+  # place, so its bundle would never verify against the shipped binary; signs only
+  # reaches uploadable artifacts (archives, not the binaries inside them).
+  # Registered as SBOM-typed artifacts, the bundles upload under the names below and
+  # land in checksums.txt, so the SLSA attestation covers them too. The sboms pipe
+  # hands its cmd a scrubbed environment, so the GitHub Actions OIDC request
+  # variables are passed through for keyless signing. Off in snapshots.
+  - id: cosign
+    artifacts: binary
+    ids: [auto-dj, auto-dj-darwin-amd64, auto-dj-darwin-arm64]
+    disable: "{{ .IsSnapshot }}"
+    cmd: cosign
+    documents:
+      - "{{ .Binary }}_{{ .Os }}_{{ .Arch }}.sigstore.json"
+    env:
+      - ACTIONS_ID_TOKEN_REQUEST_URL={{ envOrDefault "ACTIONS_ID_TOKEN_REQUEST_URL" "" }}
+      - ACTIONS_ID_TOKEN_REQUEST_TOKEN={{ envOrDefault "ACTIONS_ID_TOKEN_REQUEST_TOKEN" "" }}
+    args:
+      - sign-blob
+      - --bundle=$document
+      - $artifact
+      - --yes
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+  use: github
+  format: "{{ .SHA }}: {{ .Message }}{{ if and (not .IsNightly) .Logins }} ({{ .Logins | englishJoin }}){{ end }}"
+  filters:
+    exclude:
+      - "^test"
+      - "^chore"
+      - "^build"
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security Updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug Fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Documentation Updates"
+      regexp: ^.*?docs?(\(.+\))??!?:.+$
+      order: 400
+    - title: Other Work
+      order: 9999
+
+release:
+  github:
+    owner: bitwise-media-group
+    name: auto-dj
+  # The release-please job in release.yaml leaves a draft release named after the
+  # tag it pushes. Adopt that draft instead of creating a second release, swap its
+  # release-please notes for the grouped changelog above, and leave it a draft: the
+  # reusable release workflow runs GoReleaser with --draft and publishes it last,
+  # once the assets, cask and attestations land.
+  use_existing_draft: true
+  mode: replace
+
+# ^ref: https://goreleaser.com/customization/homebrew_casks/
+# `brew install bitwise-media-group/tap/auto-dj`. The darwin binaries are
+# notarized, so the cask needs no quarantine-stripping hook. ffmpeg decodes the
+# audio (features, previews, the demo), so the cask depends on Homebrew's.
+homebrew_casks:
+  - name: auto-dj
+    binaries: [auto-dj]
+    homepage: https://oss.bitwisemedia.uk/auto-dj/
+    description: Places a consistent hot cue and memory cue layout on Rekordbox tracks and prepares DJ sets
+    license: MIT
+    dependencies:
+      - formula: ffmpeg
+    skip_upload: auto
+    repository:
+      owner: bitwise-media-group
+      name: homebrew-tap
+      # The cask lands as a pull request from bot/auto-dj-<tag> (bot/** is exempt
+      # from the org fork-only ruleset), never a push to main: the reusable release
+      # workflow merges it only after it publishes the draft release, so the tap
+      # never points at assets that do not exist yet. The token is a short-lived
+      # FF Merge App token the workflow mints for the tap alone.
+      branch: bot/auto-dj-{{ .Tag }}
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: bitwise-media-group
+          name: homebrew-tap
+          branch: main

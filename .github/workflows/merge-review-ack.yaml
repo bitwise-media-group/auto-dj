@@ -1,0 +1,18 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Companion to merge.yaml: completes on an approving review so its
+# workflow_run(completed) re-enters merge.yaml in base context, which is what lets an
+# approval (fork or same-repo) finish an armed auto-merge.
+name: Merge Review Ack
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+# does no privileged work; grants nothing
+permissions: {}
+
+jobs:
+  ack:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge-review-ack.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0

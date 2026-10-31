@@ -1,0 +1,19 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Posts a one-time comment on new PRs explaining that this repo merges via `/merge`.
+name: Merge Notice
+
+on: # zizmor: ignore[dangerous-triggers] -- the notice must reach fork PRs; the reusable workflow only posts a static comment, no PR code is run
+  pull_request_target:
+    types: [opened]
+
+# the reusable workflow comments with GITHUB_TOKEN; grant just that
+permissions:
+  pull-requests: write
+
+jobs:
+  notice:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge-notice.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0
+    with:
+      pr-number: ${{ github.event.pull_request.number }}

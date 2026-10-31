@@ -53,6 +53,7 @@ relaxes the fenced-code rule, because admonition and tab bodies need indentation
 
 ## Publishing
 
-`.github/workflows/docs.yaml` builds the site (Go and ffmpeg from the mise pins, then `mise run docs-build`) and deploys
-it to GitHub Pages on every push to `main` that touches the docs or the code. Pages must be set to **Settings → Pages →
-Source → GitHub Actions**.
+The release workflow (`.github/workflows/release.yaml`, calling the shared one in
+`bitwise-media-group/github-workflows`) builds the site with `mise run docs-build` (Go and ffmpeg from the mise pins)
+and deploys it to GitHub Pages on every release, so the site always documents the latest released binary. Pages must be
+set to **Settings → Pages → Source → GitHub Actions**.

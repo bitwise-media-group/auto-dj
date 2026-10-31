@@ -1,0 +1,33 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Signature-preserving fast-forward merges: `/merge` merges an approved, green PR
+# now; `/auto-merge` (or the `auto-merge` label) merges it once approved and green.
+# workflow_run lists every workflow that must pass plus the review-ack companion,
+# so whichever finishes last triggers the attempt; ff-merge re-verifies all checks.
+# Needs the org "FF Merge" App installed here and in the ruleset bypass list.
+name: Merge
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_run: # zizmor: ignore[dangerous-triggers] -- gates auto-merge on CI; no PR code is checked out or run
+    workflows:
+      - "Continuous Integration"
+      - "Security Analysis"
+      - "Merge Review Ack"
+    types: [completed]
+  schedule:
+    # hourly backstop sweep of armed PRs for any missed event trigger
+    - cron: "17 * * * *"
+
+# the App token does the privileged work; the caller grants nothing
+permissions: {}
+
+jobs:
+  merge:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@08001c85620929f6fe58a83ecec5313536290ab1 # v8.1.0
+    with:
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
