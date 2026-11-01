@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/bitwise-media-group/auto-dj/compare/v0.1.1...v0.1.2) (2026-11-01)
+
+
+### Bug Fixes
+
+* **deps:** update module modernc.org/sqlite to v1.61.0 ([#7](https://github.com/bitwise-media-group/auto-dj/issues/7)) ([fa6561d](https://github.com/bitwise-media-group/auto-dj/commit/fa6561d311a231a3c7bd5098aa1e4f1873b5ad8d))
+
 ## [0.1.1](https://github.com/bitwise-media-group/auto-dj/compare/v0.1.0...v0.1.1) (2026-10-31)
 
 
