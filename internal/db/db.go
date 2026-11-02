@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 
@@ -336,21 +337,37 @@ func MarshalJSON(v any) ([]byte, error) {
 
 // ------------------------------------------------------------------ playlists
 
-// ListPlaylists returns playlist names (folders and smart playlists excluded).
-func ListPlaylists(q Querier) ([]string, error) {
-	rows, err := q.Query("select Name from djmdPlaylist where rb_local_deleted=0 " +
-		"and coalesce(Attribute,0) not in (1, 4) order by Seq")
+// Playlist is a playlist, or an intelligent playlist whose tracks Rekordbox picks by its
+// conditions. An intelligent playlist has no order of its own, so it can't be reordered.
+type Playlist struct {
+	Name        string
+	Intelligent bool
+	Tracks      []PlaylistTrack // only from LoadPlaylist
+}
+
+// djmdPlaylist.Attribute values.
+const (
+	attrFolder      = 1
+	attrIntelligent = 4
+)
+
+// ListPlaylists returns the playlists and intelligent playlists (folders excluded), without
+// their tracks.
+func ListPlaylists(q Querier) ([]Playlist, error) {
+	rows, err := q.Query("select Name, coalesce(Attribute,0) from djmdPlaylist where rb_local_deleted=0 "+
+		"and coalesce(Attribute,0) <> ? order by Seq", attrFolder)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var out []string
+	var out []Playlist
 	for rows.Next() {
 		var n sql.NullString
-		if err := rows.Scan(&n); err != nil {
+		var attr int
+		if err := rows.Scan(&n, &attr); err != nil {
 			return nil, err
 		}
-		out = append(out, n.String)
+		out = append(out, Playlist{Name: n.String, Intelligent: attr == attrIntelligent})
 	}
 	return out, rows.Err()
 }
@@ -367,25 +384,46 @@ type PlaylistTrack struct {
 // ErrNoPlaylist means no playlist has the requested name.
 var ErrNoPlaylist = errors.New("no such playlist")
 
-// LoadPlaylist returns the playlist's tracks in TrackNo order.
-func LoadPlaylist(q Querier, name string) ([]PlaylistTrack, error) {
+// LoadPlaylist returns the playlist's tracks in TrackNo order. An intelligent playlist's
+// tracks are the collection's matches, in the order they were added, numbered from 1.
+func LoadPlaylist(q Querier, name string) (*Playlist, error) {
+	return loadPlaylist(q, name, time.Now())
+}
+
+func loadPlaylist(q Querier, name string, today time.Time) (*Playlist, error) {
 	var pid string
-	err := q.QueryRow("select ID from djmdPlaylist where rb_local_deleted=0 and Name=?", name).Scan(&pid)
+	var attr int
+	var smart sql.NullString
+	err := q.QueryRow("select ID, coalesce(Attribute,0), SmartList from djmdPlaylist "+
+		"where rb_local_deleted=0 and Name=? order by coalesce(Attribute,0) = ?", name, attrFolder).
+		Scan(&pid, &attr, &smart)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("%w: no playlist called '%s'", ErrNoPlaylist, name)
 	}
 	if err != nil {
 		return nil, err
 	}
-	rows, err := q.Query(`select sp.TrackNo, c.ID, c.Title, c.BPM, k.ScaleName
-                from djmdSongPlaylist sp join djmdContent c on c.ID = sp.ContentID
-                left join djmdKey k on k.ID = c.KeyID
-                where sp.PlaylistID=? and sp.rb_local_deleted=0 order by sp.TrackNo`, pid)
+	const cols = "c.ID, c.Title, c.BPM, (select ScaleName from djmdKey where ID = c.KeyID)"
+	query := "select sp.TrackNo, " + cols + ` from djmdSongPlaylist sp join djmdContent c on c.ID = sp.ContentID
+                where sp.PlaylistID=? and sp.rb_local_deleted=0 order by sp.TrackNo`
+	args := []any{pid}
+	switch attr {
+	case attrFolder:
+		return nil, fmt.Errorf("%w: '%s' is a folder", ErrNoPlaylist, name)
+	case attrIntelligent:
+		var where string
+		if where, args, err = smartWhere(smart.String, today); err != nil {
+			return nil, fmt.Errorf("intelligent playlist '%s': %w", name, err)
+		}
+		query = "select 0, " + cols + " from djmdContent c where c.rb_local_deleted=0 and (" + where +
+			") order by c.created_at, c.ID"
+	}
+	rows, err := q.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var out []PlaylistTrack
+	pl := &Playlist{Name: name, Intelligent: attr == attrIntelligent}
 	for rows.Next() {
 		var no sql.NullInt64
 		var id, title, key sql.NullString
@@ -393,10 +431,13 @@ func LoadPlaylist(q Querier, name string) ([]PlaylistTrack, error) {
 		if err := rows.Scan(&no, &id, &title, &bpm, &key); err != nil {
 			return nil, err
 		}
-		out = append(out, PlaylistTrack{No: int(no.Int64), ID: id.String, Title: title.String,
+		if pl.Intelligent {
+			no.Int64 = int64(len(pl.Tracks) + 1)
+		}
+		pl.Tracks = append(pl.Tracks, PlaylistTrack{No: int(no.Int64), ID: id.String, Title: title.String,
 			BPM: bpm.Float64 / 100, Key: key.String})
 	}
-	return out, rows.Err()
+	return pl, rows.Err()
 }
 
 // IDTitle is a track ID and its title.

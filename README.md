@@ -60,7 +60,7 @@ mise run cue -- set --help           # mise keeps a bare --help for itself; pass
 ### Sets (playlist-specific E / G cues)
 
 ```sh
-mise run set                                       # list playlists
+mise run set                                       # list playlists and intelligent playlists
 mise run set "Melodic Dark"                        # key check, suggested order if keys clash, cue plan
 mise run set "Melodic Dark" --order suggested      # plan with the suggested order (or --order 1,3,2,...)
 mise run set "Melodic Dark" --write                # add the new cues (Rekordbox quit; backs up first)
@@ -69,6 +69,8 @@ mise run set "Melodic Dark" --preview-dir ~/Desktop               # previews in 
 ```
 
 Run `mise run features` first after adding tracks: `set` reads the cached audio features to place bass swaps.
+Intelligent playlists work too, numbered in the order the tracks were added; `--reorder` is refused for them because
+Rekordbox orders them itself (ADR 0015).
 
 For each transition A → B:
 

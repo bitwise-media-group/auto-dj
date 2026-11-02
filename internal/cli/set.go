@@ -33,22 +33,12 @@ func setCmd(g *globals) *cobra.Command {
 		Use:   "set [playlist]",
 		Short: "set-specific E/G cues + BASS SWAP for a playlist (omit it to list playlists)",
 		Long: "Key check, suggested order, then set-specific E / G hot cues and BASS SWAP / FILTER / CUT / SYNC\n" +
-			"transition markers for a playlist. Without a playlist, lists the playlists.",
+			"transition markers for a playlist or intelligent playlist. Without a playlist, lists the playlists.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			p := g.paths()
 			if len(args) == 0 {
-				rb, err := db.ReadCopy(p.MasterDB())
-				if err != nil {
-					return err
-				}
-				defer func() { _ = rb.Close() }()
-				names, err := db.ListPlaylists(rb)
-				if err != nil {
-					return err
-				}
-				fmt.Println("playlists:", strings.Join(names, ", "))
-				return nil
+				return listPlaylists(p.MasterDB())
 			}
 			playlist := args[0]
 			res, err := setlist.Run(p, playlist, order, freeStart)
@@ -57,6 +47,10 @@ func setCmd(g *globals) *cobra.Command {
 			}
 			if err != nil {
 				return err
+			}
+			if reorder && res.Intelligent {
+				return errExit{fmt.Sprintf("'%s' is an intelligent playlist: Rekordbox orders it, so --reorder "+
+					"can't save the order. Drop --reorder, or copy the tracks to a normal playlist.", playlist)}
 			}
 			fmt.Println(res.Report)
 			ids := make([]string, len(res.Order))
@@ -111,7 +105,8 @@ func setCmd(g *globals) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&order, "order", "", "'suggested' or a comma-separated track-number order, e.g. 1,3,2,4")
 	f.BoolVar(&freeStart, "free-start", false, "let the suggested order change the first track")
-	f.BoolVar(&reorder, "reorder", false, "with --write: also save the order to the playlist")
+	f.BoolVar(&reorder, "reorder", false, "with --write: also save the order to the playlist "+
+		"(not an intelligent playlist)")
 	f.StringVar(&previewDir, "preview-dir", "", "render transition previews, the full-set mix and a set-list page "+
 		"into `DIR`/<set name> (default <work>)")
 	f.BoolVar(&noPreview, "no-preview", false, "skip the previews")
@@ -121,4 +116,30 @@ func setCmd(g *globals) *cobra.Command {
 	f.StringVar(&out, "out", "", "set plan file (default <work>/set-plan.json)")
 	f.BoolVar(&write, "write", false, "write the cues (Rekordbox quit)")
 	return cmd
+}
+
+// listPlaylists prints the playlists, then the intelligent playlists.
+func listPlaylists(masterDB string) error {
+	rb, err := db.ReadCopy(masterDB)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rb.Close() }()
+	pls, err := db.ListPlaylists(rb)
+	if err != nil {
+		return err
+	}
+	var names, smart []string
+	for _, pl := range pls {
+		if pl.Intelligent {
+			smart = append(smart, pl.Name)
+		} else {
+			names = append(names, pl.Name)
+		}
+	}
+	fmt.Println("playlists:", strings.Join(names, ", "))
+	if len(smart) > 0 {
+		fmt.Println("intelligent playlists:", strings.Join(smart, ", "))
+	}
+	return nil
 }

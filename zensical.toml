@@ -72,6 +72,7 @@ nav = [
     { "0012 Set previews" = "decisions/0012-set-previews.md" },
     { "0013 Go port" = "decisions/0013-port-to-go.md" },
     { "0014 Generated demo set" = "decisions/0014-generated-demo-set.md" },
+    { "0015 Intelligent playlists" = "decisions/0015-intelligent-playlist-sets.md" },
   ] },
 ]
 

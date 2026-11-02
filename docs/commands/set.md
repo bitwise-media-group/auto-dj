@@ -1,12 +1,13 @@
 ---
 description:
-  Key check, suggested order, E/G and transition cues for a playlist, with audio previews of every transition.
+  Key check, suggested order, E/G and transition cues for a playlist or intelligent playlist, with audio previews of
+  every transition.
 ---
 
 # set
 
 ```text
-auto-dj set                                   # list playlists
+auto-dj set                                   # list playlists and intelligent playlists
 auto-dj set "<playlist>" [--order suggested|1,3,2,...] [--free-start]
                          [--preview-dir DIR | --no-preview] [--bpm 128] [--no-mix]
                          [--write [--reorder]] [--out FILE]
@@ -25,6 +26,14 @@ Prepares a playlist as a set:
    or `clear` (removed from the last track).
 
 Run [`features`](features.md) first after adding tracks: `set` reads the cached features to place bass swaps.
+
+## Intelligent playlists
+
+An intelligent playlist works too: `set` matches your collection against its conditions the way Rekordbox does, and
+numbers the matching tracks in the order they were added to the collection. Rekordbox decides an intelligent playlist's
+order itself, so `--reorder` is refused for one; use `--order suggested` (or your own order) to plan and write the cues,
+and copy the tracks to a normal playlist if you want the order kept in Rekordbox. A condition auto-dj doesn't know is an
+error rather than a guess ([ADR 0015](../decisions/0015-intelligent-playlist-sets.md)).
 
 The report for the [demo set](../guides/building-a-set.md), as imported, starts like this:
 
@@ -62,5 +71,5 @@ set; `--no-mix` skips `set.mp3`, and `--no-preview` skips the previews altogethe
 | `--bpm N`           | 128                    | The previews' fixed tempo (key kept); `0` plays each track at its own tempo  |
 | `--no-mix`          | off                    | Skip `set.mp3`                                                               |
 | `--write`           | off (dry run)          | Write the cues (Rekordbox quit; backs up first)                              |
-| `--reorder`         | off                    | With `--write`: also save the order to the playlist                          |
+| `--reorder`         | off                    | With `--write`: also save the order to the playlist (not an intelligent one) |
 | `--out FILE`        | `<work>/set-plan.json` | Where to write the set plan                                                  |

@@ -20,6 +20,7 @@ are written.
 | [0012](0012-set-previews.md)                      | Render set previews offline with ffmpeg, at a fixed set tempo      | 2026-10-16 |
 | [0013](0013-port-to-go.md)                        | Port rekordbox-cue to Go as auto-dj                                | 2026-10-30 |
 | [0014](0014-generated-demo-set.md)                | Generate the demo set in code and build its walkthrough offline    | 2026-10-30 |
+| [0015](0015-intelligent-playlist-sets.md)         | Build sets from intelligent playlists by evaluating their rules    | 2026-11-01 |
 
 ## Adding a record
 

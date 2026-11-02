@@ -29,6 +29,9 @@ type Result struct {
 	Recs    map[string]*tracks.Track
 	Clashes int
 	Cache   *pairs.Cache
+	// Intelligent is set for an intelligent playlist: Rekordbox picks and orders its tracks,
+	// so the order can't be saved to it.
+	Intelligent bool
 }
 
 // Run loads a playlist, checks keys, suggests an order and plans the set cues. orderSpec is
@@ -38,7 +41,7 @@ func Run(paths config.Paths, playlist, orderSpec string, freeStart bool) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	order, err := db.LoadPlaylist(rb, playlist)
+	pl, err := db.LoadPlaylist(rb, playlist)
 	var titles []db.IDTitle
 	if err == nil {
 		titles, err = db.Titles(rb)
@@ -50,7 +53,7 @@ func Run(paths config.Paths, playlist, orderSpec string, freeStart bool) (*Resul
 		return nil, err
 	}
 	if orderSpec != "" && orderSpec != "suggested" { // a hand-picked order is checked before loading
-		if _, err := pickOrder(order, orderSpec); err != nil {
+		if _, err := pickOrder(pl.Tracks, orderSpec); err != nil {
 			return nil, err
 		}
 	}
@@ -58,7 +61,12 @@ func Run(paths config.Paths, playlist, orderSpec string, freeStart bool) (*Resul
 	if err != nil {
 		return nil, err
 	}
-	return Plan(playlist, order, recs, cache, orderSpec, freeStart)
+	res, err := Plan(playlist, pl.Tracks, recs, cache, orderSpec, freeStart)
+	if err != nil {
+		return nil, err
+	}
+	res.Intelligent = pl.Intelligent
+	return res, nil
 }
 
 // Plan is Run without the library: the key check, suggested order and set cues for the
@@ -98,7 +106,8 @@ func Plan(playlist string, order []db.PlaylistTrack, recs map[string]*tracks.Tra
 	for _, x := range acts {
 		lines = append(lines, reportTrack(x, recs[x.ID])...)
 	}
-	return &Result{strings.Join(lines, "\n"), order, acts, recs, clashes, cache}, nil
+	return &Result{Report: strings.Join(lines, "\n"), Order: order, Actions: acts, Recs: recs, Clashes: clashes,
+		Cache: cache}, nil
 }
 
 // loadAndHarvest loads every analysed track and the transition cache, and records every E/G
