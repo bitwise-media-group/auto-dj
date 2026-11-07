@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.2](https://github.com/bitwise-media-group/auto-dj/compare/v0.1.1...v0.1.2) (2026-11-07)
+
+
+### Features
+
+* **set:** build sets from intelligent playlists ([58a930c](https://github.com/bitwise-media-group/auto-dj/commit/58a930cf8a1eecfa94eb2958b6e6cd0e62ec5306))
+
+
+### Bug Fixes
+
+* **deps:** update bitwise-media-group/github-workflows action to v8.1.1 ([#14](https://github.com/bitwise-media-group/auto-dj/issues/14)) ([6bac19c](https://github.com/bitwise-media-group/auto-dj/commit/6bac19ca0e12f1f58769c476a7d2c32365388551))
+* **deps:** update module modernc.org/sqlite to v1.61.0 ([#7](https://github.com/bitwise-media-group/auto-dj/issues/7)) ([fa6561d](https://github.com/bitwise-media-group/auto-dj/commit/fa6561d311a231a3c7bd5098aa1e4f1873b5ad8d))
+* **deps:** update module modernc.org/sqlite to v1.61.1 ([#13](https://github.com/bitwise-media-group/auto-dj/issues/13)) ([04e213f](https://github.com/bitwise-media-group/auto-dj/commit/04e213f639498eb79a6d53af1837d615dedd16e7))
+
 ## [0.1.1](https://github.com/bitwise-media-group/auto-dj/compare/v0.1.0...v0.1.1) (2026-10-31)
 
 
