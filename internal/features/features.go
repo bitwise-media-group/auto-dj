@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"math/cmplx"
 	"os"
@@ -76,6 +77,77 @@ func Decode(path string) ([]float32, error) {
 		y[i] = math.Float32frombits(binary.LittleEndian.Uint32(out[4*i:]))
 	}
 	return y, nil
+}
+
+// DecodeFrames is FrameFeatures(Decode(path)) without holding the decoded audio: ffmpeg's
+// output is processed a chunk at a time, so a recording of several hours fits in memory.
+func DecodeFrames(path string) ([]Frame, error) {
+	cmd := exec.Command("ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", fmt.Sprint(SR), "-f", "f32le", "-")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("ffmpeg: %w", err)
+	}
+	F, ferr := framesOf(out, 1<<20)
+	if ferr != nil {
+		_ = cmd.Process.Kill()
+	}
+	if err := cmd.Wait(); err != nil && ferr == nil {
+		return nil, fmt.Errorf("ffmpeg: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return F, ferr
+}
+
+// framesOf computes FrameFeatures over f32le mono audio read from r, chunk samples (a
+// multiple of Hop) at a time. Each chunk after the first starts on the previous chunk's
+// last frame, which is dropped, so the flux columns match FrameFeatures exactly.
+func framesOf(r io.Reader, chunk int) ([]Frame, error) {
+	br := bufio.NewReaderSize(r, 1<<16)
+	var out []Frame
+	buf := make([]float32, 0, chunk+NFFT)
+	first := true
+	var raw [4]byte
+	flush := func(y []float32) error {
+		F, err := FrameFeatures(y)
+		if err != nil {
+			return err
+		}
+		if !first {
+			F = F[1:]
+		}
+		first = false
+		out = append(out, F...)
+		return nil
+	}
+	for {
+		_, err := io.ReadFull(br, raw[:])
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		buf = append(buf, math.Float32frombits(binary.LittleEndian.Uint32(raw[:])))
+		if len(buf) == chunk+NFFT {
+			if err := flush(buf); err != nil {
+				return nil, err
+			}
+			buf = append(buf[:0], buf[chunk:]...)
+		}
+	}
+	if len(buf) >= NFFT && (first || len(buf) > NFFT) {
+		if err := flush(buf); err != nil {
+			return nil, err
+		}
+	}
+	if first {
+		return nil, fmt.Errorf("audio too short (%d samples)", len(buf))
+	}
+	return out, nil
 }
 
 // bandMasks returns, per band, the rfft bins with a <= f < b (np.fft.rfftfreq(NFFT, 1/SR)).
@@ -306,4 +378,39 @@ func perBeat(F []Frame, beats []float64, bpm float64) [][Cols]float64 {
 		}
 	}
 	return fb
+}
+
+// Frames returns audioPath's frame features from the cache, decoding (and caching) them
+// when they aren't there yet.
+func Frames(featureDir, audioPath string) ([]Frame, error) {
+	if F, err := Load(CachePath(featureDir, audioPath)); err == nil {
+		return F, nil
+	}
+	if r := extractOne(audioPath, featureDir); strings.HasPrefix(r, "error") {
+		return nil, errors.New(strings.TrimPrefix(r, "error: "))
+	}
+	return Load(CachePath(featureDir, audioPath))
+}
+
+// RecordingFrames returns a long recording's frame features, cached by its path, size and
+// modification time (recordings are often all called REC001.WAV).
+func RecordingFrames(featureDir, path string) ([]Frame, error) {
+	st, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	abs, _ := filepath.Abs(path)
+	sum := md5.Sum(fmt.Appendf(nil, "%s|%d|%d", norm.NFC.String(abs), st.Size(), st.ModTime().UnixNano()))
+	cache := filepath.Join(featureDir, "recordings", hex.EncodeToString(sum[:])+".f32.gz")
+	if F, err := Load(cache); err == nil {
+		return F, nil
+	}
+	F, err := DecodeFrames(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(cache), 0o755); err != nil {
+		return nil, err
+	}
+	return F, Save(cache, F)
 }
