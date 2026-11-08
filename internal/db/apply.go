@@ -93,7 +93,7 @@ func ptr(v int) *int { return &v }
 // with our names are replaced, so any E/F/G notes the user added survive a re-run.
 // EMERGENCY is written as an active loop unless a cue that stays already is one.
 func ApplyPlan(tx *sql.Tx, plan []PlanTrack, autoIDs map[string]bool) (*Stats, error) {
-	used, err := newIDSource(tx)
+	used, err := newIDSource(tx, "djmdCue")
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ type SetCues struct {
 // Remove. beats: track id -> beat-time array (s). E/G marked replace/clear are overwritten /
 // removed (callers cache them first, see the pairs package); nothing else is touched.
 func ApplySet(tx *sql.Tx, actions []SetCues, beats map[string][]float64) (*Stats, error) {
-	used, err := newIDSource(tx)
+	used, err := newIDSource(tx, "djmdCue")
 	if err != nil {
 		return nil, err
 	}

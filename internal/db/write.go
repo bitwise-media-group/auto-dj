@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -104,15 +105,19 @@ func (s *Stats) String() string {
 type ApplyFunc func(tx *sql.Tx) (*Stats, error)
 
 // now is djmdCue/djmdSongPlaylist's timestamp format: UTC with milliseconds.
-func now() string {
-	return time.Now().UTC().Format("2006-01-02 15:04:05.000") + " +00:00"
+func now() string { return stamp(time.Now()) }
+
+// stamp formats t like Rekordbox's created_at / updated_at columns.
+func stamp(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04:05.000") + " +00:00"
 }
 
-// idSource hands out unused random djmdCue IDs (1 .. 2^32-1, deleted rows included).
+// idSource hands out unused random numeric IDs for a table (1 .. 2^32-1, deleted rows
+// included): djmdCue and djmdPlaylist use them.
 type idSource map[string]bool
 
-func newIDSource(tx *sql.Tx) (idSource, error) {
-	rows, err := tx.Query("select ID from djmdCue")
+func newIDSource(tx *sql.Tx, table string) (idSource, error) {
+	rows, err := tx.Query("select ID from " + table)
 	if err != nil {
 		return nil, err
 	}
@@ -297,19 +302,29 @@ func DryRun(masterDB string, fn ApplyFunc) (*Stats, error) {
 	return applyPlain(plain, fn)
 }
 
+// Sidecar is a file Rekordbox keeps in step with master.db (masterPlaylists6.xml), replaced
+// together with it: Update gets the file's current bytes after fn has run and returns the
+// new ones.
+type Sidecar struct {
+	Path   string
+	Update func(old []byte) ([]byte, error)
+}
+
 // SafeWrite backs up master.db, applies fn to a decrypted copy, re-encrypts it with the
 // original salt, decrypts that again and checks it, then swaps it in, unless master.db
-// changed meanwhile.
-func SafeWrite(masterDB, backupDir string, fn ApplyFunc) (*Stats, error) {
+// changed meanwhile. Sidecars are backed up and replaced with it: if one can't be written,
+// master.db and the sidecars already written are put back.
+func SafeWrite(masterDB, backupDir string, fn ApplyFunc, sides ...Sidecar) (*Stats, error) {
 	key, err := sqlcipher.RekordboxKey()
 	if err != nil {
 		return nil, err
 	}
-	return safeWrite(masterDB, backupDir, key, AssertSafeToWrite, fn)
+	return safeWrite(masterDB, backupDir, key, AssertSafeToWrite, fn, sides...)
 }
 
 // safeWrite is SafeWrite with the key and the safety check passed in (for tests).
-func safeWrite(masterDB, backupDir, key string, guard func(string) error, fn ApplyFunc) (*Stats, error) {
+func safeWrite(masterDB, backupDir, key string, guard func(string) error, fn ApplyFunc,
+	sides ...Sidecar) (*Stats, error) {
 	if err := guard(masterDB); err != nil {
 		return nil, err
 	}
@@ -353,14 +368,95 @@ func safeWrite(masterDB, backupDir, key string, guard func(string) error, fn App
 	if err := checkPlain(check); err != nil {
 		return nil, fmt.Errorf("re-encrypted copy: %w", err)
 	}
+	staged, err := stageSidecars(sides, backupDir)
+	if err != nil {
+		return nil, err
+	}
 	if st, err := os.Stat(masterDB); err != nil || !st.ModTime().Equal(before) {
 		return nil, errors.New("master.db changed while writing; nothing was replaced")
 	}
-	if err := replaceContents(enc, masterDB); err != nil {
+	if err := swapIn(enc, masterDB, bak, staged); err != nil {
 		return nil, err
 	}
 	stats.Set("backup", bak)
+	for _, s := range staged {
+		stats.Append("sidecar_backups", s.backup)
+	}
 	return stats, nil
+}
+
+// swapIn replaces master.db with enc, then each sidecar; if a sidecar can't be written,
+// master.db goes back to its backup bak and the sidecars written so far to their old bytes.
+func swapIn(enc, masterDB, bak string, staged []stagedSidecar) error {
+	if err := replaceContents(enc, masterDB); err != nil {
+		return err
+	}
+	for i, s := range staged {
+		if err := writeAtomic(s.path, s.new); err != nil {
+			rerr := replaceContents(bak, masterDB)
+			for _, done := range staged[:i] {
+				rerr = errors.Join(rerr, writeAtomic(done.path, done.old))
+			}
+			if rerr != nil {
+				return fmt.Errorf("writing %s: %w; restoring the backups failed too: %w", s.path, err, rerr)
+			}
+			return fmt.Errorf("writing %s: %w (master.db restored, nothing changed)", s.path, err)
+		}
+	}
+	return nil
+}
+
+// stagedSidecar is a sidecar's old and new bytes and its backup.
+type stagedSidecar struct {
+	path, backup string
+	old, new     []byte
+}
+
+// stageSidecars computes each sidecar's new contents and backs the old ones up, before
+// anything is replaced.
+func stageSidecars(sides []Sidecar, backupDir string) ([]stagedSidecar, error) {
+	out := make([]stagedSidecar, 0, len(sides))
+	if len(sides) > 0 {
+		if err := os.MkdirAll(backupDir, 0o755); err != nil {
+			return nil, err
+		}
+	}
+	for _, s := range sides {
+		old, err := os.ReadFile(s.Path)
+		if err != nil {
+			return nil, err
+		}
+		nw, err := s.Update(old)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", filepath.Base(s.Path), err)
+		}
+		ext := filepath.Ext(s.Path)
+		bak := filepath.Join(backupDir, strings.TrimSuffix(filepath.Base(s.Path), ext)+".before-cues."+
+			time.Now().Format("20060102-150405")+ext)
+		if err := copyFile(s.Path, bak); err != nil {
+			return nil, err
+		}
+		out = append(out, stagedSidecar{s.Path, bak, old, nw})
+	}
+	return out, nil
+}
+
+// writeAtomic replaces path with data through a temporary file in the same folder, keeping
+// the file's mode.
+func writeAtomic(path string, data []byte) error {
+	mode := os.FileMode(0o644)
+	if st, err := os.Stat(path); err == nil {
+		mode = st.Mode().Perm()
+	}
+	tmp := path + ".auto-dj.tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 func checkPlain(path string) error {
