@@ -4,16 +4,18 @@
 auto-dj <command> [flags]
 ```
 
-| Command                   | What it does                                                     | Writes to Rekordbox? |
-| ------------------------- | ---------------------------------------------------------------- | -------------------- |
-| [`status`](status.md)     | Tracks per state; is Rekordbox running?                          | no                   |
-| [`features`](features.md) | Decode audio once into the feature cache                         | no                   |
-| [`evaluate`](evaluate.md) | Score the rules against your hand-cued tracks                    | no                   |
-| [`plan`](plan.md)         | Plan cues for Mixed In Key / `CUE(Auto)` / uncued tracks         | no                   |
-| [`review`](review.md)     | Render the plan as an HTML review page                           | no                   |
-| [`apply`](apply.md)       | Write the plan (dry run unless `--write`)                        | with `--write`       |
-| [`set`](set.md)           | Key check, suggested order, set cues and previews for a playlist | with `--write`       |
-| [`demo`](demo.md)         | Render the demo set, cue it, plan the set and open its preview   | no                   |
+| Command                     | What it does                                                     | Writes to Rekordbox? |
+| --------------------------- | ---------------------------------------------------------------- | -------------------- |
+| [`status`](status.md)       | Tracks per state; is Rekordbox running?                          | no                   |
+| [`features`](features.md)   | Decode audio once into the feature cache                         | no                   |
+| [`evaluate`](evaluate.md)   | Score the rules against your hand-cued tracks                    | no                   |
+| [`plan`](plan.md)           | Plan cues for Mixed In Key / `CUE(Auto)` / uncued tracks         | no                   |
+| [`review`](review.md)       | Render the plan as an HTML review page                           | no                   |
+| [`apply`](apply.md)         | Write the plan (dry run unless `--write`)                        | with `--write`       |
+| [`set`](set.md)             | Key check, suggested order, set cues and previews for a playlist | with `--write`       |
+| [`history`](history.md)     | List the play histories, or one history's tracks                 | no                   |
+| [`recording`](recording.md) | Split a set recording into tagged AAC tracks by its history      | with `--write`       |
+| [`demo`](demo.md)           | Render the demo set, cue it, plan the set and open its preview   | no                   |
 
 A typical run:
 
@@ -46,14 +48,15 @@ auto-dj set "Dark Mode"     # key check + set cues for a playlist
 
 ## Files
 
-| Path                                                  | What                                                 |
-| ----------------------------------------------------- | ---------------------------------------------------- |
-| `~/.cache/auto-dj/features/*.f32.gz`                  | Per-track audio features (`features`)                |
-| `~/.cache/auto-dj/plan.json`, `review.html`           | The cue plan and its review page                     |
-| `~/.cache/auto-dj/set-plan.json`                      | The last `set` plan                                  |
-| `~/Library/Pioneer/_cue_work/master.before-cues.*.db` | A backup before every write                          |
-| `~/Library/Pioneer/_cue_work/applied-tracks.json`     | The ledger of tracks auto-dj cued (the `auto` state) |
-| `~/Library/Pioneer/_cue_work/transitions.json`        | The transition cache of every E/G pair               |
+| Path                                                  | What                                                  |
+| ----------------------------------------------------- | ----------------------------------------------------- |
+| `~/.cache/auto-dj/features/*.f32.gz`                  | Per-track audio features (`features`)                 |
+| `~/.cache/auto-dj/plan.json`, `review.html`           | The cue plan and its review page                      |
+| `~/.cache/auto-dj/set-plan.json`                      | The last `set` plan                                   |
+| `~/Library/Pioneer/_cue_work/master.before-cues.*.db` | A backup before every write                           |
+| `~/Library/Pioneer/_cue_work/applied-tracks.json`     | The ledger of tracks auto-dj cued (the `auto` state)  |
+| `~/Library/Pioneer/_cue_work/transitions.json`        | The transition cache of every E/G pair                |
+| `~/.cache/auto-dj/recordings/<history>/`              | `recording`'s alignment, tracks, cue sheet, tracklist |
 
 ## Through mise
 

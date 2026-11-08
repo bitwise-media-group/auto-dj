@@ -47,6 +47,8 @@ nav = [
     { "review" = "commands/review.md" },
     { "apply" = "commands/apply.md" },
     { "set" = "commands/set.md" },
+    { "history" = "commands/history.md" },
+    { "recording" = "commands/recording.md" },
     { "demo" = "commands/demo.md" },
   ] },
   { "Guides" = [
@@ -73,6 +75,8 @@ nav = [
     { "0013 Go port" = "decisions/0013-port-to-go.md" },
     { "0014 Generated demo set" = "decisions/0014-generated-demo-set.md" },
     { "0015 Intelligent playlists" = "decisions/0015-intelligent-playlist-sets.md" },
+    { "0016 Playlists from histories" = "decisions/0016-create-playlists-from-histories.md" },
+    { "0017 Splitting recordings" = "decisions/0017-split-recordings-by-alignment.md" },
   ] },
 ]
 

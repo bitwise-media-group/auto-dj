@@ -1,7 +1,8 @@
 // Copyright 2026 BitWise Media Group Ltd
 // SPDX-License-Identifier: MIT
 
-// Package cli is the auto-dj command line: status, features, evaluate, plan, review, apply, set, demo.
+// Package cli is the auto-dj command line: status, features, evaluate, plan, review, apply, set, history,
+// recording, demo.
 package cli
 
 import (
@@ -29,6 +30,10 @@ Typical run (Rekordbox may stay open until apply):
     auto-dj review              # -> <work>/review.html
     auto-dj apply --write       # quit Rekordbox first; backs up master.db
     auto-dj set "Dark Mode"     # key check + set cues (E/G + BASS SWAP) for a playlist
+
+After a gig (plug the USB in so Rekordbox imports the history):
+    auto-dj history             # the play histories
+    auto-dj recording "HISTORY 2026-11-07" REC001.WAV --dj "Name" --art cover.jpg
 
 See it all on a generated demo set, no Rekordbox needed:
     auto-dj demo`
@@ -64,7 +69,7 @@ func NewRoot() *cobra.Command {
 	root.PersistentFlags().StringVar(&g.rbDir, "rb-dir", config.DefaultRBDir(), "folder holding master.db and share/")
 	root.PersistentFlags().StringVar(&g.workDir, "work-dir", config.DefaultWorkDir(), "cache + plan output folder")
 	root.AddCommand(statusCmd(g), featuresCmd(g), evaluateCmd(g), planCmd(g), reviewCmd(g), applyCmd(g), setCmd(g),
-		demoCmd(g))
+		historyCmd(g), recordingCmd(g), demoCmd(g))
 	return root
 }
 

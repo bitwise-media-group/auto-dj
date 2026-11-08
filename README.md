@@ -54,6 +54,7 @@ mise run review                      # -> ~/.cache/auto-dj/review.html (open in 
 mise run apply                       # dry run on a copy of master.db
 mise run apply --write               # QUIT REKORDBOX FIRST. Backs up master.db, then writes
 mise run demo                        # the generated demo set, end to end, without Rekordbox
+mise run history                     # play histories (after a gig: see below)
 mise run cue -- set --help           # mise keeps a bare --help for itself; pass it through `cue --`
 ```
 
@@ -129,6 +130,46 @@ Options: `plan --categories mik nohot auto` (or `mik,nohot,auto`) picks targets 
 
 After writing, open Rekordbox and spot-check. Then re-export or sync your USB sticks.
 
+### After a gig (split the recording)
+
+Plug the USB in: Rekordbox imports the CDJs' play history. Then turn the mixer recording (one long WAV) into one tagged
+AAC file per track:
+
+```sh
+mise run history                                   # the play histories, oldest first
+mise run history "HISTORY 2026-11-07 (4)"          # one history's tracks, in play order
+mise run recording "HISTORY 2026-11-07 (4)" REC001.WAV --dj "Deavon" --art cover.jpg --album "Live at …"
+mise run recording "HISTORY 2026-11-07 (4)" REC001.WAV --dj "Deavon" --art cover.jpg --write   # Rekordbox quit
+```
+
+The history gives the order but not the timing (its row times are when Rekordbox imported it), so each track is found in
+the recording by its sound: at whatever tempo it was played (±10%), from whichever cue, for however much of it was
+played, through loops and hot cue jumps. Each file starts where the track took the bass over from the one before,
+snapped to its phrase start ([ADR 0017](docs/decisions/0017-split-recordings-by-alignment.md)). Into `--out` (default
+`<work>/recordings/<history>`) it writes:
+
+- `alignment.json`: per track its status (`ok`, `low-confidence`, `not-found` — never heard, left out, `no-audio` — no
+  file here), where it was heard, and its `cut` (h:mm:ss.sss into the recording). **Review it**: edit a `cut` to move
+  it, clear it to leave the track out, or give a `no-audio` track a cut to put it in. Re-runs reuse the file and its
+  edits; `--realign` aligns again (keeping hand-edited cuts).
+- `NN - Artist - Title.m4a` (256 kb/s AAC, Apple's encoder through `afconvert` when available, `--encoder ffmpeg` for
+  ffmpeg's): the track's own title, artist, composer, genre, comment and label (as grouping); the set as album (default:
+  the history's name), `--dj` as album artist, `--date` (default: the history's day), track n/N, and `--art` as the
+  cover. Each file holds exactly its samples (checked), so the files play back gapless as the original mix.
+- `<album>.cue` (the whole WAV, a track per cut), `tracklist.txt` (`h:mm:ss  Artist – Title`) and `tracklist.json`.
+
+The silence before the music and after it (below −60 dBFS: the recorder runs a moment before you start and after you
+stop) is left out of the first and last files; `--no-trim` keeps it.
+
+With `--write` it also saves each transition as played (G on the outgoing track, E and BASS SWAP on the incoming one,
+source `recording:<history>`) to the transition cache, and creates a playlist of the kept tracks, named after the
+history (`--playlist` to rename, `--folder` to file it), so `auto-dj set` can run on it. Nothing else in Rekordbox
+changes: the E/G pads only move when you run `set --write` on that playlist
+([ADR 0016](docs/decisions/0016-create-playlists-from-histories.md)).
+
+The report flags transitions that don't look like yours: E is the incoming track's cue it was started on, and G is the
+outgoing beat playing then, normally within 16 beats of one of the outgoing track's hot cues.
+
 ## Track states
 
 | State  | What it is                                    | What happens                                                                       |
@@ -170,6 +211,9 @@ Renovate bumps the submodule to each new toolchain tag (`.gitmodules` records th
   transaction, and runs an integrity check. It then re-encrypts the copy with the original salt, decrypts that again and
   checks it once more, and only then swaps it in (unless `master.db` changed meanwhile).
 - A track is skipped if its cues changed after the plan was made.
+- `recording --write` creates a playlist (refused if the name is taken) and nothing else. Its node goes into
+  `masterPlaylists6.xml` in the same step: that file is backed up too, and if it can't be written `master.db` is put
+  back.
 - To undo: quit Rekordbox and copy a `master.before-cues.*.db` backup over `~/Library/Pioneer/rekordbox/master.db`.
 
 ## Layout
@@ -180,7 +224,7 @@ internal/
   cli/               command line (cobra)
   config/            paths, cue template, rule thresholds (Rules)
   sqlcipher/         SQLCipher 4 decrypt / encrypt of master.db (pure Go)
-  db/                master.db access, track states, safe writer, ledger
+  db/                master.db access, track states, safe writer, ledger, histories, playlists
   anlz/              beat grid (PQTZ) + phrase (PSSI) parsing
   features/          audio band energies via ffmpeg + FFT (cache: <work>/features/*.f32.gz)
   num/               numpy behaviours the rules rely on (percentiles, pairwise sums, rounding)
@@ -190,6 +234,8 @@ internal/
   setlist/           playlists: key check, order suggestion, set E/G + BASS SWAP cues
   pairs/             transition cache (restore set pairs when tracks meet again)
   preview/           transition audio previews + set-list page
+  mixalign/          line a play history up against a set recording (`auto-dj recording`)
+  mixexport/         cut, encode and tag the recording's tracks; cue sheet + tracklist
   evaluate/          accuracy against hand-cued tracks
   review/            HTML review page; templates/ holds both pages
   testtrack/         synthetic tracks for the tests

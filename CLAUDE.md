@@ -2,8 +2,8 @@
 
 `auto-dj` places Deavon's hot cue / memory cue layout on Rekordbox tracks, mainly to replace Mixed In Key's `Energy N`
 cues, and prepares sets. Read the ADRs in `docs/decisions/` (MADR, `NNNN-title.md`) before changing rules: the template
-is 0001, the rules and their evaluation numbers 0003, the `djmdCue` field encodings 0005, and sets 0007–0012. Record a
-new decision as the next-numbered ADR (see `docs/decisions/index.md`).
+is 0001, the rules and their evaluation numbers 0003, the `djmdCue` field encodings 0005, sets 0007–0012 and 0015, and
+recordings 0016–0017. Record a new decision as the next-numbered ADR (see `docs/decisions/index.md`).
 
 - Go CLI (cobra), module `github.com/bitwise-media-group/auto-dj`, main in `cmd/auto-dj`: `mise run build` →
   `./auto-dj`, or `mise run <command> [args]` (CLI tasks in `mise.toml`). Needs `ffmpeg` on PATH. Builds with
@@ -12,7 +12,8 @@ new decision as the next-numbered ADR (see `docs/decisions/index.md`).
 - Toolchain: the `.mise/` submodule (bitwise-media-group/toolchain, go archetype). Run `mise run fmt` then
   `mise run lint` before committing; never run `mise lock` here.
 - Pipeline: `features` → `plan` → `review` → `apply --write` (see README). Sets: `set "<playlist>"` (`internal/setlist`,
-  ADRs 0007–0012).
+  ADRs 0007–0012, 0015). Gigs: `recording "<history>" <mix.wav>` (`internal/mixalign`, `internal/mixexport`, ADRs
+  0016–0017).
 - Change thresholds only in `internal/config` (`DefaultRules`), then run `auto-dj evaluate` and compare with the tables
   in ADR 0003.
 - The port from Python keeps numpy's arithmetic where cues depend on it (`internal/num`: linear percentiles, pairwise

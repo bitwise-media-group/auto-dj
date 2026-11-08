@@ -67,6 +67,16 @@ description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--pr
 dir = "{{cwd}}"
 run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" set'
 
+[tasks.history]
+description = "list the play histories, or one history's tracks [\"<history>\"]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" history'
+
+[tasks.recording]
+description = "split a set recording into tagged AAC tracks: \"<history>\" <mix.wav> --dj NAME --art COVER [--write]"
+dir = "{{cwd}}"
+run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" recording'
+
 [tasks.demo]
 description = "render the demo set, cue it, plan the set and open its preview [DIR]"
 dir = "{{cwd}}"

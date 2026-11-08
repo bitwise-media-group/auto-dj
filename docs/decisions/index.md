@@ -21,6 +21,8 @@ are written.
 | [0013](0013-port-to-go.md)                        | Port rekordbox-cue to Go as auto-dj                                | 2026-10-30 |
 | [0014](0014-generated-demo-set.md)                | Generate the demo set in code and build its walkthrough offline    | 2026-10-30 |
 | [0015](0015-intelligent-playlist-sets.md)         | Build sets from intelligent playlists by evaluating their rules    | 2026-11-01 |
+| [0016](0016-create-playlists-from-histories.md)   | Create playlists from imported play histories                      | 2026-11-07 |
+| [0017](0017-split-recordings-by-alignment.md)     | Split live recordings by aligning the history's tracks with audio  | 2026-11-07 |
 
 ## Adding a record
 

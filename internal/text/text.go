@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 // Truncate keeps the first n characters of s (Python's s[:n]).
@@ -59,4 +61,36 @@ func Slug(s string) string {
 		return "set"
 	}
 	return b.String()
+}
+
+// FileName makes s safe as one path element on macOS, Windows and Linux: Unicode NFC, runs of
+// white space collapsed to one space, path and reserved characters (/ \ : * ? " < > |) and
+// control characters replaced by '_', no leading dot or trailing dots and spaces, at most
+// 200 bytes (cut on a character boundary).
+func FileName(s string) string {
+	var b strings.Builder
+	space := false
+	for _, r := range norm.NFC.String(s) {
+		switch {
+		case unicode.IsSpace(r):
+			space = b.Len() > 0
+			continue
+		case strings.ContainsRune(`/\:*?"<>|`, r) || unicode.IsControl(r):
+			r = '_'
+		}
+		if space {
+			b.WriteByte(' ')
+			space = false
+		}
+		b.WriteRune(r)
+	}
+	out := strings.TrimRight(strings.TrimLeft(b.String(), "."), ". ")
+	for len(out) > 200 {
+		_, n := utf8.DecodeLastRuneInString(out)
+		out = out[:len(out)-n]
+	}
+	if out == "" {
+		return "_"
+	}
+	return out
 }
