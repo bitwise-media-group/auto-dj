@@ -16,7 +16,7 @@
 # like a plain CLI call) against a fresh build of this checkout.
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
 "conda:ffmpeg" = "latest"
 
