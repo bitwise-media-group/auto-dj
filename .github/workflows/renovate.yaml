@@ -4,9 +4,13 @@
 # The org's self-hosted Renovate bot, run against this repository only on its own
 # schedule. issues/pull_request [edited] react to a checkbox tick in the Dependency
 # Dashboard or a Renovate PR body; Renovate's own edits never re-trigger a run.
+# workflow_run [completed] runs Renovate as soon as a required workflow finishes
+# green on a renovate/* PR, and push [main] -- usually Renovate's own merge -- starts
+# the run that merges the next green PR, so the queue drains without the cron.
+# Neither checks out or runs PR code.
 name: Renovate
 
-on:
+on: # zizmor: ignore[dangerous-triggers] -- workflow_run only starts a Renovate run; no PR code is checked out or run
   schedule:
     - cron: "24 * * * *"
   workflow_dispatch:
@@ -28,13 +32,21 @@ on:
     types: [edited]
   pull_request:
     types: [edited]
+  workflow_run:
+    workflows:
+      - "Continuous Integration"
+      - "Security Analysis"
+    types: [completed]
+    branches: ["renovate/**"]
+  push:
+    branches: [main]
 
 # the App token does the privileged work; the caller grants nothing
 permissions: {}
 
 jobs:
   renovate:
-    uses: bitwise-media-group/github-workflows/.github/workflows/renovate.yaml@35d8e9a1ce772f67f97e73484dc5b7a50c29e0f3 # v8.1.1
+    uses: bitwise-media-group/github-workflows/.github/workflows/renovate.yaml@67215effe1e541e699905fb62b7a48b7293f935c # v8.3.0
     with:
       app-client-id: ${{ vars.RENOVATE_CLIENT_ID }}
       dry-run: ${{ inputs.dry-run || '' }}
