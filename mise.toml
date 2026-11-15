@@ -17,6 +17,10 @@
 
 [tools]
 go = "1.27.4"
+# The Swift rewrite (ADR 0018): swift.org toolchain, built against the Xcode SDK.
+"core:swift" = "6.4.2"
+# Generates AutoDJ.xcodeproj from project.yml (`mise run gen`).
+"aqua:yonaskolb/XcodeGen" = { version = "2.46.0", os = ["macos"] }
 "go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
 "conda:ffmpeg" = "latest"
 
@@ -105,3 +109,68 @@ description = "serve the docs site locally on :8004 (zensical)"
 dir = "{{config_root}}"
 depends = ["sync"]
 run = [{ task = "docs-demo" }, "uv run --no-sync zensical serve"]
+
+# ------------------------------------------------------------------ Swift rewrite (ADR 0018)
+# AutoDJKit + the auto-dj CLI build with SwiftPM; the app with Xcode (project.yml ->
+# AutoDJ.xcodeproj via XcodeGen, committed). These run beside the Go tasks until the
+# cut-over (phase 8), when the Go tree goes and the CLI tasks above switch to the Swift CLI.
+
+[tasks.swift-build]
+description = "swift build (release) of AutoDJKit and the auto-dj CLI"
+dir = "{{config_root}}"
+run = "swift build --configuration release"
+
+[tasks.swift-test]
+description = "swift test (Swift Testing: synthetic tracks and checked-in fixtures)"
+dir = "{{config_root}}"
+run = "swift test"
+
+[tasks.swift-cli]
+description = "run the Swift auto-dj CLI with any arguments (mise run swift-cli -- --help)"
+dir = "{{cwd}}"
+run = 'swift build --package-path "{{config_root}}" --configuration release --product auto-dj && "$(swift build --package-path "{{config_root}}" --configuration release --show-bin-path)/auto-dj"'
+
+[tasks.fmt-swift]
+description = "swift format the Swift sources in place"
+dir = "{{config_root}}"
+run = "swift format format --in-place --recursive --parallel Package.swift Sources Tests App"
+
+[tasks.lint-swift]
+description = "swift format lint --strict over the Swift sources"
+dir = "{{config_root}}"
+run = "swift format lint --strict --recursive --parallel Package.swift Sources Tests App"
+
+# Regenerate AutoDJ.xcodeproj from project.yml. The project is committed, so run this
+# after editing project.yml or adding/removing app source files.
+[tasks.gen]
+description = "generate AutoDJ.xcodeproj from project.yml (XcodeGen)"
+dir = "{{config_root}}"
+run = "xcodegen generate --spec project.yml"
+
+# The macOS app, unsigned (Developer ID signing and notarization happen on release).
+[tasks.app-build]
+description = "xcodebuild the AutoDJ app (needs Xcode)"
+dir = "{{config_root}}"
+run = """
+xcodebuild build \
+  -project AutoDJ.xcodeproj \
+  -scheme AutoDJ \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath .build/xcode \
+  CODE_SIGNING_ALLOWED=NO
+"""
+
+# A signed Debug build, launched. Signed so macOS's privacy grants (Documents, external
+# drives) survive rebuilds: an unsigned build gets a new identity every time.
+[tasks.app-run]
+description = "build the AutoDJ app (signed, Debug) and launch it"
+dir = "{{config_root}}"
+run = """
+xcodebuild build \
+  -project AutoDJ.xcodeproj \
+  -scheme AutoDJ \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath .build/xcode-signed \
+  -allowProvisioningUpdates -quiet \
+&& open .build/xcode-signed/Build/Products/Debug/AutoDJ.app
+"""
