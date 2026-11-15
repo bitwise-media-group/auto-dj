@@ -62,3 +62,9 @@ Deliberate differences from the Python version:
   count, column count, then float32 rows) instead of `.npz`. Run `auto-dj features` once after switching. The format
   kept its `ADJF` magic through the rename, so a cache under `~/.cache/adj` works once moved to `~/.cache/auto-dj`.
 - Environment variables: `AUTO_DJ_WORK`, `AUTO_DJ_PATH_MAP` and `AUTO_DJ_CLOUD_DIR` replace the `REKORDBOX_CUE_*` ones.
+
+## Amendment (2026-11-14)
+
+[0018](0018-rewrite-as-a-native-macos-app.md) rewrites auto-dj in Swift. It keeps this record's rule of gating every
+change on a diff against the previous build, but relaxes "identical" to "the same cues": only the numpy semantics that
+decide where a cue lands are kept, and file formats may change.

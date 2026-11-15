@@ -65,3 +65,8 @@ and markers on each track's own grid, as if nothing jumps.
 - Good, because what you hear is exactly what the cues say, end to end.
 - Good, because the page works from disk in any browser.
 - Bad, because rendering adds about a minute to every `set` run for an hour-long set (`--no-preview` skips it).
+
+## Amendment (2026-11-14)
+
+The Swift rewrite renders previews in-process instead: decoded once, in parallel, cached per segment, streamed to
+playback, exported as m4a by default. The mix itself is unchanged. See [0019](0019-render-previews-in-process.md).

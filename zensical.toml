@@ -77,6 +77,8 @@ nav = [
     { "0015 Intelligent playlists" = "decisions/0015-intelligent-playlist-sets.md" },
     { "0016 Playlists from histories" = "decisions/0016-create-playlists-from-histories.md" },
     { "0017 Splitting recordings" = "decisions/0017-split-recordings-by-alignment.md" },
+    { "0018 Native macOS app" = "decisions/0018-rewrite-as-a-native-macos-app.md" },
+    { "0019 In-process previews" = "decisions/0019-render-previews-in-process.md" },
   ] },
 ]
 

@@ -22,4 +22,10 @@ recordings 0016–0017. Record a new decision as the next-numbered ADR (see `doc
   tracks or hot cue slots E/F/G, except what `set --write` does by user decision (ADRs 0009–0011): E/G, memory-cue
   renames/recolours/markers, and renaming `JUMP <label>` hot cues to `JUMP`.
 - Tests: `mise run test` (synthetic tracks and checked-in fixtures, no Rekordbox needed).
+- Swift rewrite (ADR 0018, in progress beside the Go tree): AutoDJKit + the `auto-dj` CLI in `Package.swift`
+  (`swift build`, `swift test` / `mise run swift-test`), the macOS app in `App/` built from `project.yml` with XcodeGen
+  (`mise run gen` after adding/removing app files, then `mise run app-build`, or `mise run app-run` for a signed build).
+  `swift format` with `.swift-format` (`mise run fmt-swift` / `lint-swift`). Keep behaviour, not bytes: gate changes
+  on `scripts/parity.py` cue-beat diffs against the Go binary until the cut-over. Thresholds live in
+  `Rules.default` (`Sources/AutoDJKit/Config/Config.swift`).
 - Docs site: Zensical (`zensical.toml`, `docs/`, `overrides/`); `mise run serve` / `mise run docs-build`.

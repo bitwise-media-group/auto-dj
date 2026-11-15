@@ -23,6 +23,8 @@ are written.
 | [0015](0015-intelligent-playlist-sets.md)         | Build sets from intelligent playlists by evaluating their rules    | 2026-11-01 |
 | [0016](0016-create-playlists-from-histories.md)   | Create playlists from imported play histories                      | 2026-11-07 |
 | [0017](0017-split-recordings-by-alignment.md)     | Split live recordings by aligning the history's tracks with audio  | 2026-11-07 |
+| [0018](0018-rewrite-as-a-native-macos-app.md)     | Rewrite auto-dj as a native macOS app in Swift                     | 2026-11-14 |
+| [0019](0019-render-previews-in-process.md)        | Render set previews in-process, in parallel, streamed to playback  | 2026-11-14 |
 
 ## Adding a record
 
