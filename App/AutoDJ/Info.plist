@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>auto-dj</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.music</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>auto-dj reads your Rekordbox tracks to analyse them and render set previews.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>auto-dj reads your Rekordbox tracks to analyse them and render set previews.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>auto-dj reads your Rekordbox tracks to analyse them and render set previews.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright 2026 BitWise Media Group Ltd</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>auto-dj reads tracks stored on network drives.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>auto-dj reads tracks and gig recordings on external drives and USB sticks.</string>
+</dict>
+</plist>
