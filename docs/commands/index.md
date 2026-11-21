@@ -12,6 +12,7 @@ auto-dj <command> [flags]
 | [`plan`](plan.md)           | Plan cues for Mixed In Key / `CUE(Auto)` / uncued tracks         | no                   |
 | [`review`](review.md)       | Render the plan as an HTML review page                           | no                   |
 | [`apply`](apply.md)         | Write the plan (dry run unless `--write`)                        | with `--write`       |
+| [`cue-sync`](cue-sync.md)   | Copy every track's cues where the players read them              | with `--write`       |
 | [`set`](set.md)             | Key check, suggested order, set cues and previews for a playlist | with `--write`       |
 | [`history`](history.md)     | List the play histories, or one history's tracks                 | no                   |
 | [`recording`](recording.md) | Split a set recording into tagged AAC tracks by its history      | with `--write`       |

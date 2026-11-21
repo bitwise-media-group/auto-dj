@@ -58,7 +58,15 @@ loops and memory cue colours) and can be verified before it replaces the live fi
   beats → 1048577, 32 → 2097153, 64 → 4194305. `ActiveLoop 1` makes it an active loop (Rekordbox starts looping when
   playback reaches it). A track can already have one of the DJ's own (a memory cue, or an E/F/G pad such as `RUN`); a
   cue that stays and has `ActiveLoop 1` wins, and EMERGENCY is written as a plain loop with `ActiveLoop 0` (how
-  Rekordbox stores a loop that isn't active). Our own old EMERGENCY doesn't count, since it's replaced.
+  Rekordbox stores a loop that isn't active). Our own old EMERGENCY doesn't count, since it's replaced. _2026-11-15:_
+  the written active loops don't activate when played, although these fields match a loop made active in Rekordbox
+  itself (`RUN`, `ActiveLoop 1`, `BeatLoopSize 1048577`, `CueMicrosec 0`). Rekordbox 6+ keeps a second copy of each
+  track's cues in `contentCue` (`Cues`: a JSON array of the `djmdCue` rows; `rb_cue_count`), and auto-dj only writes
+  `djmdCue`: 252 of 263 cued tracks' `contentCue` still hold their old cues. A loop the DJ made active in Rekordbox
+  (Quicksand, which rewrote that track's `contentCue`) works on the players, so they most likely read `contentCue`.
+  Since 2026-11-15 every cue write rebuilds the track's `contentCue` from `djmdCue` (`ContentCue`: the JSON as Rekordbox
+  writes it, NULL columns left out, ISO timestamps), and `cue-sync` brings existing tracks in line. Confirmed on
+  2026-11-15: after `cue-sync --write` (256 tracks), the EMERGENCY active loops activate on the CDJs.
 - New rows: random unused 32-bit `ID`, `UUID` uuid4, `ContentUUID` = track UUID, `usn`/`rb_local_usn` NULL (same as cues
   Rekordbox itself creates locally), timestamps `YYYY-MM-DD HH:MM:SS.mmm +00:00`.
 - **`Kind 4` is not a hot cue pad.** Rekordbox doesn't show it on the pads (a track with an EMERGENCY loop stored as

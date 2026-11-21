@@ -85,6 +85,25 @@ struct ApplyCmd: ParsableCommand {
     }
 }
 
+struct CueSyncCmd: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "cue-sync",
+        abstract: "copy every track's cues into Rekordbox's contentCue, which the players read: dry run, or --write")
+    @OptionGroup var g: Globals
+    @Flag(help: "actually write (default is a dry run)") var write = false
+
+    func run() throws {
+        let p = g.paths
+        let fn: ApplyFunc = { db in try ContentCue.resync(db) }
+        if !write {
+            print("DRY RUN (nothing written):", try SafeWrite.dryRun(p.masterDB, fn))
+            print("Re-run with --write once Rekordbox is quit.")
+            return
+        }
+        print(try SafeWrite.write(p.masterDB, backupDir: p.backupDir, fn))
+    }
+}
+
 /// Splits comma-separated list values ("mik,nohot" as well as "mik nohot").
 func splitList(_ v: [String]) -> [String] {
     v.flatMap { $0.split(separator: ",").map(String.init) }

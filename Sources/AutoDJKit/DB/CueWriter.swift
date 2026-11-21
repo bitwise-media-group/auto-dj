@@ -163,7 +163,11 @@ public enum CueWriter {
     public static func applyPlan(_ db: SQLite, _ plan: [PlanTrack], autoIDs: Set<String>) throws -> Stats {
         let ids = try IDSource(db, "djmdCue")
         let ts = SafeWrite.stamp()
-        let stats = Stats([("updated", .int(0)), ("skipped", .list([])), ("removed", .int(0)), ("added", .int(0))])
+        let stats = Stats([
+            ("updated", .int(0)), ("skipped", .list([])), ("removed", .int(0)), ("added", .int(0)),
+            ("content_cues", .int(0)),
+        ])
+        var touched: [String] = []
         for x in plan {
             let c = try content(db, x.id)
             let cur = try trackCues(db, x.id)
@@ -196,7 +200,9 @@ public enum CueWriter {
                         comment: m.name))
             }
             stats.add("updated", 1)
+            touched.append(x.id)
         }
+        stats.add("content_cues", try ContentCue.sync(db, touched, ts: ts))
         return stats
     }
 
@@ -245,10 +251,12 @@ public enum CueWriter {
         let ts = SafeWrite.stamp()
         let stats = Stats([
             ("hot_cues", .int(0)), ("markers", .int(0)), ("removed", .int(0)), ("renamed", .int(0)),
-            ("recoloured", .int(0)), ("skipped", .list([])),
+            ("recoloured", .int(0)), ("skipped", .list([])), ("content_cues", .int(0)),
         ])
+        var touched: [String] = []
         for a in actions {
             guard let c = try content(db, a.id) else { continue }
+            touched.append(a.id)
             try renameAndRecolour(db, a.id, ts, stats)
             let B = beats[a.id]
             func ms(_ b: Int) -> Int { Num.round(B![min(max(b, 1), B!.count) - 1] * 1000) }
@@ -320,6 +328,7 @@ public enum CueWriter {
                 stats.add("markers", 1)
             }
         }
+        stats.add("content_cues", try ContentCue.sync(db, touched, ts: ts))
         return stats
     }
 

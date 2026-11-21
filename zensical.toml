@@ -46,6 +46,7 @@ nav = [
     { "plan" = "commands/plan.md" },
     { "review" = "commands/review.md" },
     { "apply" = "commands/apply.md" },
+    { "cue-sync" = "commands/cue-sync.md" },
     { "set" = "commands/set.md" },
     { "history" = "commands/history.md" },
     { "recording" = "commands/recording.md" },
@@ -79,6 +80,7 @@ nav = [
     { "0017 Splitting recordings" = "decisions/0017-split-recordings-by-alignment.md" },
     { "0018 Native macOS app" = "decisions/0018-rewrite-as-a-native-macos-app.md" },
     { "0019 In-process previews" = "decisions/0019-render-previews-in-process.md" },
+    { "0020 Transition endings and vocals" = "decisions/0020-transition-endings-and-vocal-overlaps.md" },
   ] },
 ]
 

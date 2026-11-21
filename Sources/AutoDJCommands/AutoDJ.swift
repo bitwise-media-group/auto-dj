@@ -5,9 +5,12 @@ import ArgumentParser
 import AutoDJKit
 import Foundation
 
-@main
-struct AutoDJ: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+/// The `auto-dj` command line. The SwiftPM `auto-dj` executable and the copy embedded in AutoDJ.app
+/// (`Contents/MacOS/auto-dj`) both run it from `Sources/AutoDJCLI/AutoDJCLI.swift`.
+public struct AutoDJ: AsyncParsableCommand {
+    public init() {}
+
+    public static let configuration = CommandConfiguration(
         commandName: "auto-dj",
         abstract: "Place hot cues and memory cues on Rekordbox tracks and prepare sets",
         discussion: """
@@ -28,7 +31,8 @@ struct AutoDJ: AsyncParsableCommand {
                 auto-dj demo
             """,
         subcommands: [
-            Status.self, FeaturesCmd.self, EvaluateCmd.self, PlanCmd.self, ReviewCmd.self, ApplyCmd.self, SetCmd.self,
+            Status.self, FeaturesCmd.self, EvaluateCmd.self, PlanCmd.self, ReviewCmd.self, ApplyCmd.self,
+            CueSyncCmd.self, SetCmd.self,
             HistoryCmd.self, RecordingCmd.self, DemoCmd.self,
         ]
     )

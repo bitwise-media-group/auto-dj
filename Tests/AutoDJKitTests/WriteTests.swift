@@ -185,6 +185,54 @@ import Testing
         }
     }
 
+    static let contentCueTable = """
+        create table contentCue (ID varchar(255) primary key, ContentID varchar(255), Cues text, rb_cue_count integer,
+          UUID varchar(255), rb_data_status integer default 0, rb_local_data_status integer default 0,
+          rb_local_deleted tinyint(1) default 0, rb_local_synced tinyint(1) default 0, usn bigint, rb_local_usn bigint,
+          created_at datetime not null, updated_at datetime not null);
+        """
+
+    @Test func contentCueFollowsTheWrite() throws {
+        let c = Self.cueSQL
+        let d = try db(
+            Self.contentCueTable + c("1", "10", 1, 1000, "Energy 5", -1) + c("2", "10", 0, 9000, "MY SPOT", 0)
+                + c("3", "11", 1, 1000, "Energy 3", -1)
+                + "update djmdCue set created_at='2026-10-10 00:44:16.500 +00:00', updated_at=created_at, ContentUUID='uuid-10' where ID='2';"
+                // track 10's copy still holds its generated cue; track 11 has none
+                + "insert into contentCue (ID, ContentID, Cues, rb_cue_count, UUID, created_at, updated_at) values "
+                + "('uuid-10', '10', '[{\"ID\":\"1\",\"Comment\":\"Energy 5\"}]', 1, 'u', 'x', 'x');")
+        #expect(try ContentCue.stale(d).sorted() == ["10", "11"])
+        let em = PlanHot(kind: 9, name: "EMERGENCY", ms: 200_000, loop: 32, outMS: 215_000)
+        let plan = ["10", "11"].map {
+            PlanTrack(id: $0, title: $0, hot: [PlanHot(kind: 1, name: "IN", ms: 15000), em], mem: [])
+        }
+        let st = try d.transaction { try CueWriter.applyPlan(d, plan, autoIDs: []) }
+        #expect(st.int("content_cues") == 2)
+        #expect(try ContentCue.stale(d).isEmpty)
+        let r = try #require(try d.queryRow("select Cues, rb_cue_count, ID from contentCue where ContentID='10'"))
+        let cues = try #require(try JSONSerialization.jsonObject(with: Data(r.string(0).utf8)) as? [[String: Any]])
+        #expect(r.int(1) == 3 && cues.count == 3)  // MY SPOT kept, IN and EMERGENCY added
+        let spot = try #require(cues.first { $0["Comment"] as? String == "MY SPOT" })
+        #expect(spot["ID"] as? String == "2" && spot["Kind"] as? Int == 0 && spot["InMsec"] as? Int == 9000)
+        #expect(spot["ActiveLoop"] == nil && spot["created_at"] as? String == "2026-10-10T00:44:16.500+00:00")
+        let loop = try #require(cues.first { $0["Comment"] as? String == "EMERGENCY" })
+        #expect(loop["ActiveLoop"] as? Int == 1 && loop["BeatLoopSize"] as? Int == (32 << 16) + 1)
+        #expect(loop["OutMsec"] as? Int == 215_000 && loop["ContentUUID"] as? String == "uuid-10")
+        #expect(r.string(0).hasPrefix("[{\"ID\":") && !r.string(0).contains("\": ") && !r.string(0).contains(", \""))
+        // track 11 had no copy: one is added, keyed by the track's UUID
+        #expect(
+            try d.queryRow("select ID, rb_cue_count from contentCue where ContentID='11'").map {
+                ($0.string(0), $0.int(1))
+            } ?? ("", 0) == ("uuid-11", 2))
+        // a second write changes nothing that's already in step
+        #expect(try ContentCue.sync(d, ["10", "11"], ts: "t") == 0)
+    }
+
+    @Test func contentCueJSONText() {
+        #expect(ContentCue.quote("A \"B\" \\ é/") == "\"A \\\"B\\\" \\\\ é/\"")
+        #expect(ContentCue.iso("2026-11-15 21:18:32.984 +00:00") == "2026-11-15T21:18:32.984+00:00")
+    }
+
     @Test func applySetAndReorder() throws {
         let c = Self.cueSQL
         let d = try db(
@@ -203,7 +251,7 @@ import Testing
             let st = try CueWriter.applySet(d, [a], beats: ["10": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
             #expect(
                 st.description
-                    == "{\n \"hot_cues\": 2,\n \"markers\": 1,\n \"removed\": 2,\n \"renamed\": 3,\n \"recoloured\": 1,\n \"skipped\": []\n}"
+                    == "{\n \"hot_cues\": 2,\n \"markers\": 1,\n \"removed\": 2,\n \"renamed\": 3,\n \"recoloured\": 1,\n \"skipped\": [],\n \"content_cues\": 0\n}"
             )
             _ = try CueWriter.reorderPlaylist(d, "Set", ["11", "10"])
             #expect(throws: AutoDJError.self) { try CueWriter.reorderPlaylist(d, "Set", ["10"]) }
