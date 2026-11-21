@@ -183,7 +183,9 @@ public enum MixAlign {
     }
 
     /// One input's working state.
-    final class Item {
+    /// Unchecked: the alignment mutates an item only between its parallel loops, which just
+    /// read it.
+    final class Item: @unchecked Sendable {
         let input: Input
         var entry: Entry
         var env: [[Double]] = []
@@ -230,19 +232,21 @@ public enum MixAlign {
     }
 
     /// The recording's envelopes.
-    final class Aligner {
+    final class Aligner: Sendable {
         let env: [[Double]]
         let bass: [Double]
         let full: [Double]
-        var dur: Double
+        /// Seconds.
+        let dur: Double
         /// Probe length (frames).
         let m: Int
 
-        init(_ rec: Features.Frames) {
+        /// dur: the recording's length when known exactly (else its frame count's).
+        init(_ rec: Features.Frames, dur: Double? = nil) {
             env = Signal.channels(rec)
             bass = Signal.amp(rec, [0])
             full = Signal.amp(rec, [1, 2, 3])
-            dur = Double(rec.count) / fps
+            self.dur = dur ?? Double(rec.count) / fps
             m = Int((probeSec * fps).rounded())
         }
     }
@@ -253,8 +257,7 @@ public enum MixAlign {
         _ rec: Features.Frames, _ inputs: [Input], sampleRate: Int, samples: Int64,
         progress: (String) -> Void = { _ in }
     ) -> [Entry] {
-        let a = Aligner(rec)
-        if sampleRate > 0 && samples > 0 { a.dur = Double(samples) / Double(sampleRate) }
+        let a = Aligner(rec, dur: sampleRate > 0 && samples > 0 ? Double(samples) / Double(sampleRate) : nil)
         let ts = inputs.map { Item($0) }
         for t in ts {
             guard let F = t.input.frames, F.count >= 2 * a.m else {
