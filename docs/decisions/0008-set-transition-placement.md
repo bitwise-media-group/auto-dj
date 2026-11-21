@@ -36,13 +36,15 @@ Dialogue's are one beat off.
 
 **Placement.**
 
-- G = the outgoing track's OUT.
+- G = the outgoing track's OUT (since [0020](0020-transition-endings-and-vocal-overlaps.md), up to 8 phrases earlier
+  when that finishes the transition before its last 16 bars or avoids a vocal overlap).
 - E = the incoming track's IN, or the nearest earlier beat with the same phrase position as G for which a bass swap
   fits.
 - BASS SWAP = a phrase start in both tracks, at least 16 beats after E, where B's bass rises and/or A's bass falls
   (score ≥ 0.3). It must come before A's bass ends, or failing that before A's audio ends. It's skipped when it would
   land on one of B's drops. An existing BASS SWAP memory cue in B is used as is when it falls in that window (at least
-  16 beats after E, before A's audio ends), even off A's phrasing: the DJ placed it (decision 2026-10-17).
+  16 beats after E, before A's audio ends) and (since [0020](0020-transition-endings-and-vocal-overlaps.md)) both tracks
+  have bass there, even off A's phrasing: the DJ placed it (decision 2026-10-17).
 - First track: E = START. Last track: no G. Cue names use the title stem in capitals: "The Lost Hawk (Original Mix)" →
   `LOST HAWK`, "Don't Wake Up" → `DONT WAKE UP`.
 

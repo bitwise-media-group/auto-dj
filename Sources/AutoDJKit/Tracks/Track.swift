@@ -23,6 +23,8 @@ public struct Track: Sendable, Identifiable {
     public var local = false
     /// Per-beat features (`Features` columns); nil without audio analysis.
     public var fb: [[Double]]?
+    /// Per-beat vocal confidence (0...1, `Vocals.perBeat`), nil when not analysed.
+    public var vocals: [Double]?
 
     public init(id: String, title: String) {
         self.id = id
@@ -77,6 +79,7 @@ public struct Track: Sendable, Identifiable {
                 t.local = FileManager.default.fileExists(atPath: fp)
                 t.fb = try Features.perBeat(
                     featureDir: paths.featureDir, audioPath: fp, beats: t.beats, bpm: t.bpm)
+                t.vocals = try Vocals.perBeat(featureDir: paths.featureDir, audioPath: fp, beats: t.beats, bpm: t.bpm)
             }
             out.append(t)
         }

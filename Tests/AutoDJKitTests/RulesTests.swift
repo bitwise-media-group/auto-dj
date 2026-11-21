@@ -195,7 +195,7 @@ import Testing
 
     @Test func removesStaleCutOutsAndDuplicateJumps() {
         var (a, b) = T.pair()
-        a.cues = [T.cue(a, 577, "OUT", 5)]
+        a.cues = [T.cue(a, 577, "OTHER", 8)]  // a hand-placed G: the CUT cues added below don't move it
         b.cues = [T.cue(b, 65, "IN", 1)]
         let g = T.plan(a, b)[0].g!.beat
         a.cues += [
@@ -221,6 +221,112 @@ import Testing
         #expect(acts[0].exit == Exit(name: "CUT", a: g + 32, b: acts[1].e!.beat + 32, side: "in"))
         #expect(acts[0].markers.contains(SetMarker(name: "CUT OUT", beat: g + 32, status: .new)))
         #expect(acts[0].remove.contains(.init(name: "CUT OUT", beat: g + 16, why: "no CUT IN on the next track there")))
+    }
+
+    // ADR 0020: finish before the outgoing track's last 16 bars, avoid vocal overlaps
+
+    /// Vocal confidence 1 on beats in ranges (1-based, half-open), 0 elsewhere.
+    func vocals(_ t: Track, _ ranges: [Range<Int>]) -> [Double] {
+        (1...t.beats.count).map { b in ranges.contains { $0.contains(b) } ? 1 : 0 }
+    }
+
+    @Test func movesGSoTheTransitionFinishesBeforeTheLastBars() throws {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 577, "OUT", 5)]  // OUT 64 beats from the end: finishing would be in the last bars
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        let acts = T.plan(a, b)
+        let g = try #require(acts[0].g?.beat)
+        let e = try #require(acts[1].e?.beat)
+        #expect(g < 577 && (577 - g) % 16 == 0)
+        let end = SetPlanner.leaveBeat(a, g, b, e, swap: acts[1].swap)
+        #expect(end <= SetPlanner.lastAudioBeat(a) - SetPlanner.lateBeats)
+        #expect(acts[1].warnings.contains { $0.contains("G moved") && $0.contains("finishes before the last 16 bars") })
+    }
+
+    @Test func movesAnEarlierRunsGOnOut() {
+        var (a, b) = T.pair()
+        // G on the OUT hot cue: written by the earlier rule (G = OUT), so it may move
+        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 577, "OTHER", 8)]
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        let acts = T.plan(a, b)
+        #expect((acts[0].g?.beat ?? 0) < 577 && acts[0].g?.status == .replace && acts[0].g?.name == "OTHER")
+        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 593, "OTHER", 8)]  // elsewhere: hand-placed, kept
+        #expect(T.plan(a, b)[0].g == Slot(name: "OTHER", beat: 593, status: .existing))
+    }
+
+    @Test func keepsGAtTheEndWhenNothingEarlierWorks() {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 561, "DROP", 3)]  // G can't go before the drop + 8 bars
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        let acts = T.plan(a, b)
+        #expect(acts[0].g?.beat == 577)
+        #expect(!acts[1].warnings.contains { $0.contains("G moved") })
+    }
+
+    @Test func avoidsVocalOverlap() throws {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OUT", 5)]  // finishes in time either way
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        b.vocals = vocals(b, [1..<641])  // b sings throughout
+        a.vocals = vocals(a, [513..<641])  // a's vocals start at its OUT
+        let acts = T.plan(a, b)
+        let g = try #require(acts[0].g?.beat)
+        let e = try #require(acts[1].e?.beat)
+        let end = SetPlanner.leaveBeat(a, g, b, e, swap: acts[1].swap)
+        #expect(SetPlanner.vocalOverlap(a, g, b, e, until: end).beats == 0)
+        #expect(acts[1].vocalOverlap == nil)
+        #expect(acts[1].warnings.contains { $0.contains("no vocal overlap") })
+    }
+
+    @Test func warnsWhenVocalOverlapIsUnavoidable() {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OUT", 5)]
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        a.vocals = vocals(a, [1..<641])
+        b.vocals = vocals(b, [1..<641])
+        let acts = T.plan(a, b)
+        #expect((acts[1].vocalOverlap ?? 0) >= 8)
+        #expect(
+            acts[1].warnings.contains { $0.hasPrefix("vocal overlap:") && $0.contains("no nearby transition point") })
+        var hand = (a, b)  // hand-placed E and G: kept, still flagged
+        hand.0.cues = [T.cue(a, 513, "OTHER", 8)]
+        hand.1.cues = [T.cue(b, 65, "SYNTHETIC", 6)]
+        let kept = T.plan(hand.0, hand.1)
+        #expect(kept[0].g?.beat == 513 && kept[1].e?.beat == 65)
+        #expect(kept[1].warnings.contains { $0.contains("E and G are hand-placed; kept") })
+    }
+
+    @Test func suggestsAVocalFreeLoopWhenTheOverlapStays() throws {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OTHER", 8)]  // hand-placed: the overlap stays
+        b.cues = [T.cue(b, 65, "SYNTHETIC", 6)]
+        a.vocals = vocals(a, [1..<449, 545..<641])  // 449-544 is vocal-free, so A can loop there
+        b.vocals = vocals(b, [1..<641])
+        let acts = T.plan(a, b)
+        let loop = try #require(acts[1].vocalLoop)
+        #expect(loop == SetAction.Loop(beat: 481, beats: 64))  // 16 bars, ending where A's vocals start
+        #expect(acts[1].warnings.contains { $0.contains("loop Synthetic (Extended Mix)'s beats 481-544 (16 bars") })
+        a.vocals = vocals(a, [1..<641])
+        #expect(T.plan(a, b)[1].vocalLoop == nil)
+        #expect(T.plan(a, b)[1].warnings.contains { $0.contains("no vocal-free 4-bar stretch") })
+    }
+
+    @Test func bassSwapOnlyWhereBothTracksHaveBass() throws {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OTHER", 8)]  // hand-placed G and E: kept
+        b.cues = [T.cue(b, 17, "SYNTHETIC", 6), T.cue(b, 49, "BASS SWAP", 0)]  // b has no bass until beat 65
+        let acts = T.plan(a, b)
+        let sw = try #require(acts[1].bassSwap?.beat)
+        #expect(sw != 49 && sw >= 65)
+        #expect(SetPlanner.bassBoth(a, 513, b, 17, sw) && !SetPlanner.bassBoth(a, 513, b, 17, 49))
+        #expect(acts[1].warnings.contains { $0.hasPrefix("BASS SWAP at beat 49 not used: both tracks need bass") })
+    }
+
+    @Test func noVocalAnalysisNoVocalWarnings() {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OUT", 5)]
+        b.vocals = vocals(b, [1..<641])  // a has no vocal analysis
+        #expect(T.plan(a, b)[1].vocalOverlap == nil)
     }
 
     @Test func syncMarkersOnBothTracks() {

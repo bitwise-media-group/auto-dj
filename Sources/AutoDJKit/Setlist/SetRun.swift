@@ -136,6 +136,14 @@ public enum SetRun {
                 + "in the transition cache), clear = removed from the last track):",
         ]
         for a in acts { lines += reportTrack(a, recs[a.id]) }
+        let vocal = acts.filter { $0.vocalOverlap != nil }.count
+        if vocal > 0 {
+            lines += [
+                "",
+                "\(vocal) vocal overlap(s): no nearby transition point avoids them; see the warnings for a loop to "
+                    + "hold the outgoing track.",
+            ]
+        }
         return SetResult(
             playlist: playlist, report: lines.joined(separator: "\n"), order: order, actions: acts, recs: recs,
             clashes: clashes, keyChecks: Keys.checkOrder(order), suggested: suggested, suggestedCost: cost, cache: cache

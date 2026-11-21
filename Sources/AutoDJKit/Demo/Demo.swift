@@ -276,6 +276,8 @@ public enum Demo {
         for i in ts.indices {
             ts[i].fb = try Features.perBeat(
                 featureDir: featDir, audioPath: ts[i].path, beats: ts[i].beats, bpm: ts[i].bpm)
+            ts[i].vocals = try Vocals.perBeat(
+                featureDir: featDir, audioPath: ts[i].path, beats: ts[i].beats, bpm: ts[i].bpm)
         }
         let items = CuePlan.make(ts, ["nohot"], .default)  // freshly analysed tracks have no hot cues
         for i in ts.indices {  // apply --write: the planned cues land on the tracks, which become "auto"

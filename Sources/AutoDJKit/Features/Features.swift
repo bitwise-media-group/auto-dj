@@ -220,14 +220,23 @@ public enum Features {
         }
     }
 
-    /// Caches audioPath's features unless they already are.
+    /// Caches audioPath's features and vocal analysis (`Vocals`) unless they already are.
     public static func extractOne(
         _ audioPath: String, featureDir: String, progress: ((Double) -> Void)? = nil
     ) -> Status {
         let out = cachePath(featureDir: featureDir, audioPath: audioPath)
-        if FileManager.default.fileExists(atPath: out) { return .cached }
+        let vox = Vocals.cachePath(featureDir: featureDir, audioPath: audioPath)
+        let fm = FileManager.default
+        let (haveF, haveV) = (fm.fileExists(atPath: out), fm.fileExists(atPath: vox))
+        if haveF && haveV { return .cached }
         do {
-            try save(out, try decodeFrames(audioPath, progress: progress))
+            if !haveF {
+                try save(out, try decodeFrames(audioPath, progress: haveV ? progress : { progress?($0 * 0.7) }))
+            }
+            if !haveV {
+                try Vocals.save(vox, try Vocals.analyse(audioPath))
+                progress?(1)
+            }
             return .ok
         } catch {
             return .error("\(error)")

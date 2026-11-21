@@ -50,6 +50,18 @@ public struct SetAction: Codable, Sendable, Equatable, Identifiable {
     /// would sit on. Set (possibly nil) on every track a transition comes into.
     public var swap: Int?
     public var hasIncoming = false
+    /// Beats of the transition into this track where both tracks' vocals play (ADR 0020); set
+    /// when 8 or more, nil otherwise.
+    public var vocalOverlap: Int?
+    /// When vocals overlap: a vocal-free stretch of the outgoing track to loop (4, 8 or 16
+    /// bars, on a phrase start) so it can hold while the incoming track's vocals play.
+    public var vocalLoop: Loop?
+
+    public struct Loop: Codable, Sendable, Equatable {
+        /// The outgoing track's first beat of the loop.
+        public var beat: Int
+        public var beats: Int
+    }
 
     public struct Removal: Codable, Sendable, Equatable {
         public var name: String
@@ -60,6 +72,8 @@ public struct SetAction: Codable, Sendable, Equatable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, e = "E", g = "G", bassSwap = "bass_swap", warnings, exit, sync, markers, remove, swap
         case hasIncoming = "has_incoming"
+        case vocalOverlap = "vocal_overlap"
+        case vocalLoop = "vocal_loop"
     }
 
     public init(id: String, title: String) {
@@ -192,23 +206,43 @@ public enum SetPlanner {
 
     // ---------------------------------------------------------------- planning
 
+    /// The bass level (`Track.normLevel`) both sides of a bass swap need: a's over the 16 beats
+    /// before it, b's over the 16 after (the level `bassEndBeat` treats as bass).
+    static let swapBass = 0.45
+
+    /// Mean of a level over beats [s, t) (1-based; 0 when empty).
+    static func meanLevel(_ lo: [Double], _ s: Int, _ t: Int) -> Double {
+        let s = max(s, 1)
+        let t = min(t, lo.count + 1)
+        return t > s ? Num.mean(lo[(s - 1)..<(t - 1)]) : 0
+    }
+
+    /// Whether a bass swap at b's beat x (a's beat x - e + g) has bass on both sides: a has bass
+    /// going into it and b coming out of it (ADR 0020). True without the audio analysis.
+    public static func bassBoth(_ a: Track, _ g: Int, _ b: Track, _ e: Int, _ x: Int) -> Bool {
+        guard a.hasFB, b.hasFB else { return true }
+        let y = x - e + g
+        return meanLevel(Track.normLevel(a.col(0)), y - 16, y) >= swapBass
+            && meanLevel(Track.normLevel(b.col(0)), x, x + 16) >= swapBass
+    }
+
     /// A phrase-aligned bass swap point in b inside the overlap: where b's bass comes in and/or
-    /// a's bass drops out, on a phrase start in both tracks. nil = none.
+    /// a's bass drops out, on a phrase start in both tracks, with bass in both (a's before it,
+    /// b's after). nil = none.
     static func bassSwap(_ a: Track, _ g: Int, _ b: Track, _ e: Int, _ drops: [Int], _ existing: [Int]) -> (
         Int?, String
     ) {
         let overlapEnd = e + (bassEndBeat(a) - g)  // b's beat when a's bass ends
         let hardEnd = max(overlapEnd, e + (lastAudioBeat(a) - g))  // ... and when a has finished
-        // the user's own BASS SWAP wins inside the overlap, phrase-aligned or not
-        if let x = existing.first(where: { e + 16 <= $0 && $0 <= hardEnd }) { return (x, "existing") }
+        // the user's own BASS SWAP wins inside the overlap, phrase-aligned or not, where both
+        // tracks have bass
+        if let x = existing.first(where: { e + 16 <= $0 && $0 <= hardEnd && bassBoth(a, g, b, e, $0) }) {
+            return (x, "existing")
+        }
         guard b.hasFB, a.hasFB else { return (nil, "no audio analysis") }
         let lb = Track.normLevel(b.col(0))
         let la = Track.normLevel(a.col(0))
-        func mean(_ lo: [Double], _ s: Int, _ t: Int) -> Double {
-            let s = max(s, 1)
-            let t = min(t, lo.count + 1)
-            return t > s ? Num.mean(lo[(s - 1)..<(t - 1)]) : 0
-        }
+        let mean = meanLevel
         var bestX = 0
         var bestScore = 0.0
         for limit in [overlapEnd, hardEnd] {
@@ -217,6 +251,7 @@ public enum SetPlanner {
                 defer { x += 1 }
                 if !bothOnPhrase(b, x, a, x - e + g) { continue }
                 let y = x - e + g  // same moment in a
+                if mean(la, y - 16, y) < swapBass || mean(lb, x, x + 16) < swapBass { continue }  // bass both sides
                 let score =
                     (mean(lb, x, x + 16) - mean(lb, x - 16, x))
                     + CueRules.pyMax(0, mean(la, y - 16, y) - mean(la, y, y + 16))
@@ -224,7 +259,7 @@ public enum SetPlanner {
             }
             if bestX != 0 { break }
         }
-        if bestX == 0 { return (nil, "no clear bass change inside the overlap") }
+        if bestX == 0 { return (nil, "no clear bass change inside the overlap where both tracks have bass") }
         if drops.contains(where: { abs(bestX - $0) <= 1 }) {
             return (nil, "bass comes in on a drop (beat \(bestX)); no BASS SWAP needed")
         }
@@ -232,8 +267,13 @@ public enum SetPlanner {
     }
 
     /// E for incoming u: the nearest beat at/before e0 with the same phrase position as G in t,
-    /// moving earlier only when that is what makes a bass swap fit.
-    static func chooseE(_ t: Track, _ g: Int, _ u: Track, _ e0: Int, _ drops: [Int], _ bss: [Int]) -> Int {
+    /// moving earlier only when that is what makes a bass swap fit, or (ADR 0020) when an
+    /// earlier one has less vocal overlap or ends the transition before t's last 16 bars:
+    /// the candidate with the lowest `cost`.
+    static func chooseE(
+        _ t: Track, _ g: Int, _ u: Track, _ e0: Int, _ drops: [Int], _ bss: [Int],
+        cost: ((Int) -> Double)? = nil
+    ) -> Int {
         var cands: [Int] = []
         var c = e0
         while c > CueRules.firstDownbeat(u) - 1 && cands.count < 8 {
@@ -242,11 +282,73 @@ public enum SetPlanner {
         }
         if cands.isEmpty, let c = (e0..<e0 + phrase).first(where: { samePhase(t, g, u, $0) }) { cands = [c] }
         if cands.isEmpty { cands = [e0] }
-        for c in cands {
+        let fits = cands.filter { c in
             let (bs, why) = bassSwap(t, g, u, c, drops, bss)
-            if bs != nil || why.contains("drop") { return c }
+            return bs != nil || why.contains("drop")
         }
-        return cands[0]
+        guard let first = fits.first else { return cands[0] }
+        guard let cost else { return first }
+        return fits.min { cost($0) < cost($1) } ?? first  // ties: the first, nearest e0
+    }
+
+    // ---------------------------------------------------------------- transition length and vocals (ADR 0020)
+
+    /// A vocal-free loop in a for a transition at g whose vocals clash from beat `clash`: the
+    /// longest of 16, 8 or 4 bars that starts on a phrase between 16 bars before g and the clash,
+    /// ends by the clash (so a is looping before its vocals come), and has no vocals in a; the
+    /// latest such start.
+    public static func vocalLoop(_ a: Track, _ g: Int, clash: Int) -> SetAction.Loop? {
+        for len in [64, 32, 16] {
+            var s = clash - len
+            while s >= max(g - 64, 1) {
+                if onPhrase(a, s), !(s..<s + len).contains(where: { vocal(a, $0) }) {
+                    return SetAction.Loop(beat: s, beats: len)
+                }
+                s -= 1
+            }
+        }
+        return nil
+    }
+
+    /// A transition finishing within this many beats of the outgoing track's end (its last
+    /// 16 bars) is avoided when an earlier G does better.
+    public static let lateBeats = 64
+
+    /// How far before the outgoing OUT G may move (in phrases) to finish earlier or avoid vocals.
+    static let earlierPhrases = 8
+
+    /// The beat of a where it has left the mix (as the previews mix it): its FILTER exit plus the
+    /// sweep and fade, its CUT, else 8 beats after the bass swap, else 40 beats after G.
+    public static func leaveBeat(_ a: Track, _ g: Int, _ b: Track, _ e: Int, swap: Int?) -> Int {
+        let end: Int
+        if let ex = exitMarker(a, g, b, e) {
+            end = ex.name == "FILTER" ? ex.a + Int(Mix.filterBeats + Mix.filterFadeBeats) : ex.a
+        } else if let sw = swap, sw > e {
+            end = g + sw - e + Int(Mix.fadeOut)
+        } else {
+            end = g + 32 + Int(Mix.fadeOut)
+        }
+        return min(end, max(lastAudioBeat(a), g))
+    }
+
+    /// Whether beat b of t has vocals (its bar's confidence at least `Vocals.threshold`).
+    static func vocal(_ t: Track, _ b: Int) -> Bool {
+        guard let v = t.vocals, b >= 1, b <= v.count else { return false }
+        return v[b - 1] >= Vocals.threshold
+    }
+
+    /// The beats of a in [g, end) where a's and b's vocals play together, and the first of them.
+    public static func vocalOverlap(_ a: Track, _ g: Int, _ b: Track, _ e: Int, until end: Int) -> (
+        beats: Int, from: Int?
+    ) {
+        guard a.vocals != nil, b.vocals != nil, end > g else { return (0, nil) }
+        var n = 0
+        var from: Int?
+        for y in g..<end where vocal(a, y) && vocal(b, e + y - g) {
+            n += 1
+            if from == nil { from = y }
+        }
+        return (n, from)
     }
 
     /// The memory cues where the outgoing track leaves the mix.
@@ -415,6 +517,9 @@ public enum SetPlanner {
         var g = 0
         var e = 0
         var al = Alignment(phraseAligned: false, endsOnPhrase: false, offset: 0)
+        /// G and E are hand-placed (or restored from the cache): never moved.
+        var gFixed = false
+        var eFixed = false
 
         init(i: Int, x: PlaylistTrack, nxt: PlaylistTrack, t: Track, u: Track, cached: TransitionCache.Entry) {
             (self.i, self.x, self.nxt, self.t, self.u, self.cached) = (i, x, nxt, t, u, cached)
@@ -433,8 +538,85 @@ public enum SetPlanner {
         mutating func plan(_ out: inout [SetAction]) {
             chooseG(&out)
             chooseE(&out)
+            earlierG()
             slots(&out)
             markers(&out)
+            vocals(&out)
+        }
+
+        /// The swap beat in u for transition (g, e): the BASS SWAP, else the drop it would sit on.
+        func swapAt(_ g: Int, _ e: Int) -> Int? {
+            let (bs, why) = bassSwap(t, g, u, e, drops, bss)
+            if let bs { return bs }
+            return why.firstMatch(of: /on a drop \(beat (\d+)\)/).flatMap { Int($0.1) }
+        }
+
+        /// What transition (g, e) costs (ADR 0020): beats of vocal overlap, finishing in t's last
+        /// 16 bars (allowed when nothing nearby avoids it), and moving G or E from where the cue
+        /// rules put them (OUT, IN).
+        func cost(_ g: Int, _ e: Int, g0: Int, e0: Int) -> Double {
+            let end = leaveBeat(t, g, u, e, swap: swapAt(g, e))
+            let vox = Double(vocalOverlap(t, g, u, e, until: end).beats)
+            let late = end > lastAudioBeat(t) - lateBeats ? 48.0 : 0
+            return 2 * vox + late + 6 * Double(max(g0 - g, 0)) / 16 + 4 * Double(max(e0 - e, 0)) / 16
+        }
+
+        /// Tries G up to 8 phrases before OUT (same phrase position, not before A's DROP hot cue)
+        /// when that finishes the transition before A's last 16 bars or with less vocal overlap.
+        mutating func earlierG() {
+            guard !gFixed, al.phraseAligned || al.endsOnPhrase else { return }
+            let (g0, e0) = (g, e)
+            let eIn = inOf { e0 }
+            let lowest = max(hot[3].map { beatOf(t, $0.t) + 32 } ?? 0, t.beats.count / 2)
+            var best = (g: g0, e: e0, cost: cost(g0, e0, g0: g0, e0: eIn))
+            let me = self
+            for k in 1...earlierPhrases {
+                let gc = g0 - phrase * k
+                if gc < lowest { break }
+                let ec =
+                    eFixed
+                    ? e0
+                    : SetPlanner.chooseE(t, gc, u, eIn, drops, bss) { me.cost(gc, $0, g0: g0, e0: eIn) }
+                let a = align(t, gc, u, ec)
+                guard a.phraseAligned || a.endsOnPhrase else { continue }
+                let c = cost(gc, ec, g0: g0, e0: eIn)
+                if c < best.cost - 1e-9 { best = (gc, ec, c) }
+            }
+            guard best.g != g0 else { return }
+            let before = leaveBeat(t, g0, u, e0, swap: swapAt(g0, e0))
+            let after = leaveBeat(t, best.g, u, best.e, swap: swapAt(best.g, best.e))
+            var why: [String] = []
+            let last = lastAudioBeat(t)
+            if before > last - lateBeats && after <= last - lateBeats { why.append("finishes before the last 16 bars") }
+            let vb = vocalOverlap(t, g0, u, e0, until: before).beats
+            let va = vocalOverlap(t, best.g, u, best.e, until: after).beats
+            if va < vb { why.append(va == 0 ? "no vocal overlap" : "less vocal overlap (\(vb / 4) -> \(va / 4) bars)") }
+            (g, e) = (best.g, best.e)
+            al = align(t, g, u, e)
+            note.append(
+                "G moved \((g0 - g) / 4) bars before OUT (beat \(g0) -> \(g))"
+                    + (why.isEmpty ? "" : ": " + why.joined(separator: ", ")))
+        }
+
+        /// Flags vocals that still overlap (8 beats or more) after the choice above.
+        func vocals(_ out: inout [SetAction]) {
+            let end = leaveBeat(t, g, u, e, swap: out[i + 1].swap)
+            let (n, from) = vocalOverlap(t, g, u, e, until: end)
+            guard n >= 8, let from else { return }
+            out[i + 1].vocalOverlap = n
+            let why =
+                gFixed && eFixed
+                ? "E and G are hand-placed; kept" : "no nearby transition point avoids it"
+            let loop = vocalLoop(t, g, clash: from)
+            out[i + 1].vocalLoop = loop
+            let hint =
+                loop.map {
+                    "; loop \(x.title)'s beats \($0.beat)-\($0.beat + $0.beats - 1) (\($0.beats / 4) bars, no vocals) "
+                        + "to hold it while \(nxt.title)'s vocals play"
+                } ?? "; no vocal-free 4-bar stretch to loop near G"
+            out[i + 1].warnings.append(
+                "vocal overlap: \(x.title) and \(nxt.title) both have vocals for \(n / 4) bar(s) of the transition "
+                    + "(from \(x.title)'s beat \(from)); \(why)\(hint)")
         }
 
         /// G: the pair's own G (in place, else cached), else the outgoing OUT.
@@ -442,8 +624,12 @@ public enum SetPlanner {
             var gSrc = ""  // the hand-placed cue G follows, if any
             if gMatch, let gc = gCur {
                 (g, gSrc) = (gc.beat, "G '\(gc.name)'")
+                // a G right on the OUT hot cue is what the earlier rule wrote (G = OUT), so it may
+                // move like a generated one (ADR 0020); anywhere else it was placed by hand
+                gFixed = hot[5].map { beatOf(t, $0.t) } != gc.beat
             } else if let gms = cached.gMS {
                 g = beatOf(t, Double(gms) / 1000)
+                gFixed = true
                 note.append("G restored from the transition cache")
             } else if let d = hot[5] {
                 (g, gSrc) = (beatOf(t, d.t), "OUT hot cue '\(d.name)'")
@@ -463,12 +649,17 @@ public enum SetPlanner {
         mutating func chooseE(_ out: inout [SetAction]) {
             if eMatch, let ec = eCur {
                 e = ec.beat
+                eFixed = true
             } else if let ems = cached.eMS {
                 e = beatOf(u, Double(ems) / 1000)
+                eFixed = true
                 note.append("E restored from the transition cache")
             } else {
                 let u = self.u
-                e = SetPlanner.chooseE(t, g, u, inOf { CueRules.hotCues(u, .default)["IN"]! }, drops, bss)
+                let g = self.g
+                let e0 = inOf { CueRules.hotCues(u, .default)["IN"]! }
+                let me = self
+                e = SetPlanner.chooseE(t, g, u, e0, drops, bss) { me.cost(g, $0, g0: g, e0: e0) }
             }
             al = align(t, g, u, e)
             let off = offPhrase(u, e)
@@ -511,6 +702,12 @@ public enum SetPlanner {
         func markers(_ out: inout [SetAction]) {
             let (bs, why) = bassSwap(t, g, u, e, drops, bss)
             out[i + 1].bassSwap = BassSwap(beat: bs, why: why)
+            let hardEnd = max(e + bassEndBeat(t) - g, e + lastAudioBeat(t) - g)
+            for sw in bss where sw != bs && e + 16 <= sw && sw <= hardEnd && !bassBoth(t, g, u, e, sw) {
+                out[i + 1].warnings.append(
+                    "BASS SWAP at beat \(sw) not used: both tracks need bass there (\(x.title) before it, "
+                        + "\(nxt.title) after it)")
+            }
             out[i + 1].hasIncoming = true
             if let bs {
                 out[i + 1].swap = bs
