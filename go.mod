@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/text v0.43.0
+	golang.org/x/text v0.44.0
 	gonum.org/v1/gonum v0.17.0
 	modernc.org/sqlite v1.62.0
 )
