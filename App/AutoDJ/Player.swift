@@ -14,6 +14,8 @@ final class Player {
     enum Source: Equatable {
         case clip(Int)
         case mix
+        /// A library track's own audio file (by track ID), e.g. from the cue plan's timeline.
+        case track(String)
     }
 
     private(set) var source: Source?
@@ -31,13 +33,27 @@ final class Player {
     @ObservationIgnored private var clipFile: String?
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var generation = 0
+    /// The playing source's sample rate: the mix's for clips and the mix, a track file's own
+    /// (the mixer converts it).
+    @ObservationIgnored private var rate = Player.sr
+    @ObservationIgnored private var connected: AVAudioFormat?
 
     static let sr = Mix.sampleRate
 
+    static let mixFormat = AVAudioFormat(standardFormatWithSampleRate: sr, channels: 2)!
+
     init() {
         engine.attach(node)
-        engine.connect(
-            node, to: engine.mainMixerNode, format: AVAudioFormat(standardFormatWithSampleRate: Self.sr, channels: 2))
+        connect(Self.mixFormat)
+    }
+
+    /// Connects the player node in format f (the node must be stopped).
+    private func connect(_ f: AVAudioFormat) {
+        if let c = connected, c == f { return }
+        engine.disconnectNodeOutput(node)
+        engine.connect(node, to: engine.mainMixerNode, format: f)
+        connected = f
+        rate = f.sampleRate
     }
 
     /// Forgets the mix chunks (a new render started).
@@ -65,6 +81,7 @@ final class Player {
 
     func playClip(_ i: Int, file: String, frames: Int) {
         stop()
+        connect(Self.mixFormat)
         source = .clip(i)
         clipFile = file
         duration = Double(frames) / Self.sr
@@ -73,9 +90,21 @@ final class Player {
 
     func playMix(from seconds: Double? = nil) {
         if source != .mix { stop() }
+        connect(Self.mixFormat)
         source = .mix
         duration = Double(renderedFrames) / Self.sr
         play(from: seconds ?? (position < duration ? position : 0))
+    }
+
+    /// Plays track id's audio file from source second `seconds`.
+    func playTrack(_ id: String, file: String, from seconds: Double) {
+        guard let f = try? AVAudioFile(forReading: URL(fileURLWithPath: file)) else { return }
+        stop()
+        connect(f.processingFormat)
+        source = .track(id)
+        clipFile = file
+        duration = Double(f.length) / f.processingFormat.sampleRate
+        play(from: min(max(seconds, 0), duration))
     }
 
     func toggle() {
@@ -109,11 +138,11 @@ final class Player {
     private func play(from seconds: Double) {
         generation += 1
         node.stop()
-        let frame = Int(seconds * Self.sr)
+        let frame = Int(seconds * rate)
         startFrame = frame
         scheduledEnd = frame
         switch source {
-        case .clip:
+        case .clip, .track:
             if let f = clipFile, let file = try? AVAudioFile(forReading: URL(fileURLWithPath: f)) {
                 let n = AVAudioFrameCount(max(file.length - AVAudioFramePosition(frame), 0))
                 if n > 0 {
@@ -141,7 +170,7 @@ final class Player {
             MainActor.assumeIsolated {
                 guard let self, self.generation == gen else { return }
                 self.position = self.currentPosition()
-                if self.position >= Double(self.scheduledEnd) / Self.sr - 0.01 {
+                if self.position >= Double(self.scheduledEnd) / self.rate - 0.01 {
                     // the mix's next chunk is still rendering: keep waiting for it
                     if self.source == .mix, self.scheduledEnd < self.renderedFrames { return }
                     self.pause()
@@ -162,6 +191,6 @@ final class Player {
 
     private func currentPosition() -> Double {
         guard let nt = node.lastRenderTime, let pt = node.playerTime(forNodeTime: nt) else { return position }
-        return Double(startFrame + Int(pt.sampleTime)) / Self.sr
+        return Double(startFrame + Int(pt.sampleTime)) / rate
     }
 }

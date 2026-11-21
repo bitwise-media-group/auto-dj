@@ -49,6 +49,10 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @Environment(AppModel.self) private var app
     @State private var section: SidebarItem? = .sets
+    /// The open set, kept while other sections are shown.
+    @State private var sets = SetsState()
+    @State private var cuePlan = CuePlanState()
+    @State private var histories = HistoriesState()
     let renderer: SetRenderer
 
     var body: some View {
@@ -60,10 +64,10 @@ struct ContentView: View {
         } detail: {
             switch section ?? .sets {
             case .library: LibraryView()
-            case .cues: CuePlanView()
+            case .cues: CuePlanView(state: cuePlan)
             case .evaluate: EvaluateView()
-            case .sets: SetsView(renderer: renderer)
-            case .histories: HistoriesView()
+            case .sets: SetsView(state: sets, renderer: renderer)
+            case .histories: HistoriesView(state: histories)
             case .demo: DemoView(renderer: renderer)
             }
         }

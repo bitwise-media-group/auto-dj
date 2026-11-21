@@ -14,15 +14,27 @@ final class SetModel {
     let playlist: String
 
     private(set) var loading = true
+    static let bpmRange = 60.0...200.0
     private(set) var library: SetLibrary?
     /// The tracks in the order being tried (`no` is the playlist's own track number).
     var tracks: [PlaylistTrack] = []
     private(set) var result: SetResult?
     private(set) var plan: PreviewPlan?
+    /// The previews' fixed tempo (0: each track at its own). Kept within `bpmRange`: a stray
+    /// value (1 or 12 while typing 125) would stretch every track tenfold, a render that takes
+    /// minutes and gigabytes.
     var bpm = 128.0 {
-        didSet { if bpm != oldValue { Task { await replan() } } }
+        didSet {
+            if bpm != 0 && !Self.bpmRange.contains(bpm) {
+                bpm = min(max(bpm, Self.bpmRange.lowerBound), Self.bpmRange.upperBound)
+            }
+            if bpm != oldValue { Task { await replan() } }
+        }
     }
     var selection: Int?  // a track's `no`
+    /// The timeline's zoom (seconds shown, 0 for the whole set), scroll and follow, kept while
+    /// another section is shown (not observed: the timeline owns the live values).
+    @ObservationIgnored var timelineView = (span: 0.0, t0: 0.0, follow: true)
 
     // render state
     private(set) var trackProgress: [Int: Double] = [:]  // by mix track number (1-based position)
@@ -33,6 +45,14 @@ final class SetModel {
     private(set) var pairErrors: [Int: String] = [:]
     private(set) var mixChunks: [MixChunk] = []
     private(set) var mixDone = false
+    /// Each mix segment's waveform, by track number, as it renders.
+    private(set) var waves: [Int: Waveform] = [:]
+    /// The loud level of each band across the set's waveforms, so they share one scale.
+    private(set) var waveRef: (low: Float, mid: Float, high: Float) = (0.05, 0.05, 0.05)
+    /// Every kept cue of every track in the mix, at its mix seconds.
+    private(set) var marks: [MixMark] = []
+    /// Each track's beats at their mix seconds (bar: the first beat of a bar), by track number.
+    private(set) var grid: [Int: [GridBeat]] = [:]
     private(set) var rendering = false
     private(set) var lastWrite: String?
 
@@ -97,6 +117,8 @@ final class SetModel {
             guard let self, !Task.isCancelled, let (res, plan) = r else { return }
             self.result = res
             self.plan = plan
+            self.marks = Self.marks(plan)
+            self.grid = Self.grid(plan)
             self.startRender(plan)
         }
         planTask = task
@@ -132,12 +154,14 @@ final class SetModel {
         pairErrors = [:]
         mixChunks = []
         mixDone = false
+        waves = [:]
+        waveRef = (0.05, 0.05, 0.05)
         player.resetMix()
         rendering = true
         let renderer = self.renderer
         renderTask = Task { [weak self] in
             do {
-                for try await ev in renderer.render(plan) {
+                for try await ev in renderer.render(plan, waveforms: true) {
                     guard let self, !Task.isCancelled else { return }
                     self.handle(ev)
                 }
@@ -162,6 +186,10 @@ final class SetModel {
         case .mixDone: mixDone = true
         case .trackFailed(let n, let e): trackErrors[n] = e
         case .pairFailed(let i, let e): pairErrors[i] = e
+        case .trackWave(let n, let w):
+            waves[n] = w
+            let l = w.level(0.97)
+            waveRef = (max(waveRef.low, l.low), max(waveRef.mid, l.mid), max(waveRef.high, l.high))
         }
     }
 
@@ -206,5 +234,67 @@ final class SetModel {
     func cancelRender() {
         renderTask?.cancel()
         rendering = false
+    }
+}
+
+/// One beat of a track in the mix.
+struct GridBeat {
+    var at: Double
+    var bar: Bool
+}
+
+/// A cue in the full-set mix: track n's cue at mix second `at`.
+struct MixMark: Identifiable {
+    var n: Int
+    var mark: CueMark
+    var at: Double
+    var id: String { "\(n)|\(mark.id)|\(at)" }
+}
+
+extension SetModel {
+    static func marks(_ plan: PreviewPlan) -> [MixMark] {
+        plan.mix.filter { !$0.missing && $0.rec != nil }.flatMap { s in
+            CueMarks.of(s.rec!, plan.actions[s.n - 1]).filter(\.kept).flatMap { m in
+                CueMarks.mixTimes(s, m.t).map { MixMark(n: s.n, mark: m, at: $0) }
+            }
+        }
+    }
+
+    static func grid(_ plan: PreviewPlan) -> [Int: [GridBeat]] {
+        var out: [Int: [GridBeat]] = [:]
+        for s in plan.mix where !s.missing {
+            guard let t = s.rec else { continue }
+            out[s.n] = t.beats.indices.flatMap { k in
+                CueMarks.mixTimes(s, t.beats[k]).map { GridBeat(at: $0, bar: k < t.bnum.count && t.bnum[k] == 1) }
+            }
+            .sorted { $0.at < $1.at }
+        }
+        return out
+    }
+
+    /// Where transition i's clip sits in the mix: the mix second of the clip's start, and its
+    /// end (the clip is the same A -> B mix, lined up on A reaching G).
+    func clipWindow(_ i: Int) -> (start: Double, end: Double)? {
+        guard let plan, i < plan.pairs.count, let clip = plan.pairs[i].clip, let ga = clip.a.gT,
+            let mixG = plan.mix.first(where: { $0.n == i + 1 })?.gT
+        else { return nil }
+        let off = mixG - ga
+        let dur = clips[i].map { Double($0.frames) / Mix.sampleRate } ?? clip.b.end
+        return (off, off + dur)
+    }
+
+    /// The mix second the player is at: the mix's position, or the clip's mapped into the mix.
+    var playheadInMix: Double? {
+        switch player.source {
+        case .mix: return player.position
+        case .clip(let i): return clipWindow(i).map { $0.start + player.position }
+        case .track, nil: return nil
+        }
+    }
+
+    /// The cues of the track with playlist number no, as the write leaves them.
+    func cueMarks(for no: Int) -> [CueMark] {
+        guard let t = record(for: no) else { return [] }
+        return CueMarks.of(t, action(for: no))
     }
 }

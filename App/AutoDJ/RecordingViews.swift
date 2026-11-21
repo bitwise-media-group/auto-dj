@@ -142,31 +142,41 @@ final class LogSink: @unchecked Sendable {
     }
 }
 
+/// The Histories section's open history (and its recording, alignment and edits), owned by
+/// the window so it survives switching sections.
+@MainActor @Observable
+final class HistoriesState {
+    var selection: String?
+    var model: RecordingModel?
+}
+
 /// The play histories; pick one to see its tracks and split a recording of it.
 struct HistoriesView: View {
     @Environment(AppModel.self) private var app
-    @State private var selection: String?
-    @State private var model: RecordingModel?
+    @Bindable var state: HistoriesState
+
+    private var model: RecordingModel? { state.model }
 
     var body: some View {
         HSplitView {
-            List(app.histories, id: \.name, selection: $selection) { h in
+            List(app.histories, id: \.name, selection: $state.selection) { h in
                 VStack(alignment: .leading) {
                     Text(h.name)
                     Text("\(h.tracks) tracks · \(h.created)").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .frame(minWidth: 190, idealWidth: 220, maxWidth: 260)
+            .frame(minWidth: 190, idealWidth: 220, maxWidth: 260, maxHeight: .infinity)
             if let model {
-                RecordingView(model: model).frame(minWidth: 560, maxWidth: .infinity)
+                RecordingView(model: model).frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Text("Select a history").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .onChange(of: selection) { _, name in
-            guard let name, let h = app.histories.first(where: { $0.name == name }) else { return model = nil }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onChange(of: state.selection) { _, name in
+            guard let name, let h = app.histories.first(where: { $0.name == name }) else { return state.model = nil }
             let m = RecordingModel(app: app, history: h)
-            model = m
+            state.model = m
             Task { await m.load() }
         }
     }
@@ -189,6 +199,8 @@ struct RecordingView: View {
                     Text(b).foregroundStyle(.secondary)
                 }
             }
+            // the recording's strip on top, like the waveform in DJ software
+            if model.file != nil { CutTimeline(model: model).frame(height: 54) }
             HStack {
                 Button("Choose Recording…") { chooseRecording() }
                 Text(model.recording.map { ($0 as NSString).lastPathComponent } ?? "no recording chosen")
@@ -201,17 +213,20 @@ struct RecordingView: View {
                 .help("Realign keeps the cuts you edited by hand")
             }
             if model.file != nil {
-                CutTimeline(model: model).frame(height: 54)
                 CutTable(model: model)
                 ExportForm(model: model)
-            } else if model.session != nil, let s = model.session {
-                List(s.rows, id: \.track.no) { r in
-                    HStack {
-                        Text("\(r.track.no).").monospacedDigit().foregroundStyle(.secondary)
-                        Text(r.track.key.isEmpty ? "?" : r.track.key).frame(width: 40)
-                        Text(r.track.title)
-                    }
-                }
+            } else if let s = model.session {
+                TrackTable(
+                    "history",
+                    rows: s.rows.map { r in
+                        let t = s.tags[r.track.id]
+                        return TrackRowData(
+                            id: "\(r.track.no)", no: r.track.no, title: r.track.title, artist: t?.artist ?? "",
+                            year: t?.year ?? 0, genre: t?.genre ?? "", bpm: r.track.bpm, key: r.track.key,
+                            status: app.library.status(r.track.id))
+                    }, numbered: true)
+            } else {
+                ProgressView("Loading the history…").frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             if !model.log.isEmpty {
                 ScrollView {
@@ -222,6 +237,8 @@ struct RecordingView: View {
             }
         }
         .padding()
+        // Fill the pane and keep the content at its top, whatever has loaded so far.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func chooseRecording() {
