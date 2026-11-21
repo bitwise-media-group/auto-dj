@@ -264,6 +264,30 @@ import Testing
         #expect(tags.count == 2 && tags["10"] == want && tags["11"]?.artist == "Oxia" && tags["11"]?.genre == "")
     }
 
+    @Test func libraryTracks() throws {
+        let dir = try tempDir()
+        let d = try db(dir)
+        let (a, b) = (dir + "/domino.aiff", dir + "/second.aiff")
+        for f in [a, b] { FileManager.default.createFile(atPath: f, contents: Data()) }
+        try d.exec("update djmdContent set FolderPath = ? where ID = '10'", a)
+        try d.exec("update djmdContent set FolderPath = ? where ID = '11'", b)
+        let fd = dir + "/features"
+        try FileManager.default.createDirectory(atPath: fd, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: Features.cachePath(featureDir: fd, audioPath: a), contents: Data())
+        FileManager.default.createFile(atPath: Vocals.cachePath(featureDir: fd, audioPath: a), contents: Data())
+        // features without the vocal analysis: still needs analysing
+        FileManager.default.createFile(atPath: Features.cachePath(featureDir: fd, audioPath: b), contents: Data())
+        let ts = Dictionary(uniqueKeysWithValues: try Library.tracks(d, featureDir: fd).map { ($0.id, $0) })
+        let x = ts["10"]!
+        #expect(
+            (x.title, x.artist, x.genre, x.key, x.year, x.bpm) == (
+                "Domino (Original Mix)", "Oxia", "Techno", "Am", 2003, 128
+            ))
+        #expect(x.analysis == .analysed && ts["11"]?.analysis == .missing && ts["12"]?.analysis == .noAudio)
+        #expect(ts["11"]?.year == 0 && ts["12"]?.artist == "")
+        #expect([LibraryTrack.Analysis.analysed, .noAudio, .missing].sorted() == [.missing, .noAudio, .analysed])
+    }
+
     @Test func createPlaylist() throws {
         let d = try db()
         let (p, sub) = try d.transaction {
