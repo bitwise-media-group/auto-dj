@@ -249,6 +249,8 @@ public enum RenderEvent: Sendable {
     case trackFailed(n: Int, error: String)
     /// Transition i's clip couldn't be rendered.
     case pairFailed(i: Int, error: String)
+    /// Mix segment n's waveform (`render(_:waveforms: true)`), as soon as the segment is rendered.
+    case trackWave(n: Int, wave: Waveform)
 }
 
 /// A finished stretch of the full-set mix.
@@ -307,15 +309,17 @@ public final class SetRenderer: Sendable {
         case pair(Int)
     }
 
-    /// Renders the plan's transition clips (pairs) and full-set mix (mix), reporting as it goes.
-    /// Cancel the consuming task to stop.
-    public func render(_ plan: PreviewPlan, pairs: Bool = true, mix: Bool = true) -> AsyncThrowingStream<
-        RenderEvent, Error
-    > {
+    /// Renders the plan's transition clips (pairs) and full-set mix (mix), reporting as it goes;
+    /// waveforms also reports each mix segment's waveform. Cancel the consuming task to stop.
+    public func render(_ plan: PreviewPlan, pairs: Bool = true, mix: Bool = true, waveforms: Bool = false)
+        -> AsyncThrowingStream<
+            RenderEvent, Error
+        >
+    {
         AsyncThrowingStream { cont in
             let task = Task {
                 do {
-                    try await self.run(plan, pairs: pairs, mix: mix) { cont.yield($0) }
+                    try await self.run(plan, pairs: pairs, mix: mix, waveforms: waveforms) { cont.yield($0) }
                     cont.finish()
                 } catch {
                     cont.finish(throwing: error)
@@ -325,8 +329,10 @@ public final class SetRenderer: Sendable {
         }
     }
 
-    func run(_ plan: PreviewPlan, pairs: Bool, mix: Bool, emit: @escaping @Sendable (RenderEvent) -> Void) async throws
-    {
+    func run(
+        _ plan: PreviewPlan, pairs: Bool, mix: Bool, waveforms: Bool = false,
+        emit: @escaping @Sendable (RenderEvent) -> Void
+    ) async throws {
         let play = plan.mix.filter { !$0.missing }
         // interleave so the start of the set is ready first: mix 1, clip 1, mix 2, clip 2, ...
         var jobs: [Job] = []
@@ -348,6 +354,7 @@ public final class SetRenderer: Sendable {
                         let s = play[k]
                         do {
                             let y = try await self.segment(s) { emit(.track(n: s.n, progress: $0)) }
+                            if waveforms { emit(.trackWave(n: s.n, wave: Waveform.of(y, start: s.start))) }
                             return .mix(k, y)
                         } catch  where !(error is CancellationError) && !Task.isCancelled {
                             emit(.trackFailed(n: s.n, error: "\(error)"))
