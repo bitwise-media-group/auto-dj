@@ -2,9 +2,12 @@
 # SPDX-License-Identifier: MIT
 
 # Continuous integration -- the reusable ci workflow runs the canonical mise tasks
-# (lint, build, test) as one job each, with Go, ffmpeg and every dev CLI installed
-# from the mise pins (root mise.toml + the .mise/ toolchain submodule), and uploads
-# the test coverage to Codecov.
+# (lint, build, test, docs-build) as one job each, with Swift and every dev CLI
+# installed from the mise pins (root mise.toml + the .mise/ toolchain submodule),
+# and uploads the test coverage to Codecov. AutoDJKit needs Apple frameworks
+# (AVFoundation, Accelerate, CommonCrypto) and the docs render the demo set with
+# the Swift CLI, so every job runs on macOS (runs-on). Xcode Cloud builds,
+# signs and notarizes the app, which embeds the CLI.
 name: Continuous Integration
 
 on:
@@ -18,3 +21,5 @@ permissions:
 jobs:
   ci:
     uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@35d8e9a1ce772f67f97e73484dc5b7a50c29e0f3 # v8.1.1
+    with:
+      runs-on: macos-latest

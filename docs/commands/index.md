@@ -12,7 +12,10 @@ auto-dj <command> [flags]
 | [`plan`](plan.md)           | Plan cues for Mixed In Key / `CUE(Auto)` / uncued tracks         | no                   |
 | [`review`](review.md)       | Render the plan as an HTML review page                           | no                   |
 | [`apply`](apply.md)         | Write the plan (dry run unless `--write`)                        | with `--write`       |
+| [`cue-sync`](cue-sync.md)   | Copy every track's cues where the players read them              | with `--write`       |
+| [`usb-check`](usb-check.md) | List the tracks whose cues on a USB device are out of date       | no                   |
 | [`set`](set.md)             | Key check, suggested order, set cues and previews for a playlist | with `--write`       |
+| [`build-set`](build-set.md) | Build a set around picked tracks (key, tempo, vocals, energy)    | with `--write`       |
 | [`history`](history.md)     | List the play histories, or one history's tracks                 | no                   |
 | [`recording`](recording.md) | Split a set recording into tagged AAC tracks by its history      | with `--write`       |
 | [`demo`](demo.md)           | Render the demo set, cue it, plan the set and open its preview   | no                   |

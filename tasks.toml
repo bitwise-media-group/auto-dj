@@ -1,0 +1,218 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+#
+# The Swift and Xcode surface (ADR 0018), laid out as in glyph: the toolchain's
+# common tasks carry prose, license, shell and workflow checks; this file
+# defines build/test, the Xcode gen/app-* tasks, the auto-dj CLI tasks and the
+# docs site, and restates the fmt/lint/ci/pr rollups with the Swift passes
+# added. It is included after common (see mise.toml), so its same-named tasks
+# replace common's whole-task. swift, swift format and llvm-cov come from the
+# core:swift pin in mise.toml; the format script is the swift
+# archetype's, called directly.
+#
+# AutoDJKit needs macOS (AVFoundation, Accelerate, CommonCrypto, SQLite3), so
+# build and test skip with a message elsewhere: the reusable CI runs every
+# canonical task on ubuntu, where only lint does real work. Xcode Cloud builds
+# the app and runs `swift test` first (ci_scripts/ci_post_clone.sh).
+
+[build]
+description = "swift build (release) of AutoDJKit and the auto-dj CLI (macOS)"
+dir = "{{config_root}}"
+run = "{{config_root}}/scripts/macos-only.sh build swift build --configuration release"
+
+# Swift Testing with coverage (scripts/test.sh): coverage/junit-swift-testing.xml
+# and coverage/lcov.info, which the reusable CI uploads to Codecov.
+[test]
+description = "swift test with coverage -> coverage/ (synthetic tracks and checked-in fixtures; macOS)"
+dir = "{{config_root}}"
+run = "{{config_root}}/scripts/macos-only.sh test {{config_root}}/scripts/test.sh"
+
+[fmt-swift]
+hide = true
+dir = "{{config_root}}"
+run = "{{config_root}}/.mise/archetypes/swift/scripts/format.sh fmt"
+
+[lint-swift]
+hide = true
+dir = "{{config_root}}"
+run = "{{config_root}}/.mise/archetypes/swift/scripts/format.sh check"
+
+# Xcode Cloud's hooks must live in ci_scripts/ beside the project, outside the
+# scripts/ and hack/ directories the common lint-shell covers.
+[lint-ci-scripts]
+hide = true
+dir = "{{config_root}}"
+run = "shellcheck ci_scripts/*.sh"
+
+# Regenerate AutoDJ.xcodeproj from project.yml. The project is committed, so
+# run this after editing project.yml or adding/removing app source files.
+[gen]
+description = "generate AutoDJ.xcodeproj from project.yml (XcodeGen)"
+dir = "{{config_root}}"
+run = "xcodegen generate --spec project.yml"
+
+# The macOS app, unsigned (Xcode Cloud signs and notarizes the real builds).
+[app-build]
+description = "xcodebuild the AutoDJ app, unsigned (needs Xcode)"
+dir = "{{config_root}}"
+run = """
+xcodebuild build \
+  -project AutoDJ.xcodeproj \
+  -scheme AutoDJ \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath .build/xcode \
+  CODE_SIGNING_ALLOWED=NO
+"""
+
+# A signed Debug build, launched. Signed so macOS's privacy grants (Documents,
+# external drives) survive rebuilds: an unsigned build gets a new identity
+# every time.
+[app-run]
+description = "build the AutoDJ app (signed, Debug) and launch it"
+dir = "{{config_root}}"
+run = """
+xcodebuild build \
+  -project AutoDJ.xcodeproj \
+  -scheme AutoDJ \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath .build/xcode-signed \
+  -allowProvisioningUpdates -quiet \
+&& open .build/xcode-signed/Build/Products/Debug/AutoDJ.app
+"""
+
+# ------------------------------------------------------------------ the auto-dj CLI
+# Each builds the release CLI from this checkout and runs it. Arguments after
+# the task name are passed through, so these are equivalent:
+#   mise run set "Melodic Set" --preview-dir ~/Desktop
+#   auto-dj set "Melodic Set" --preview-dir ~/Desktop
+# They run in the invoking directory, so relative --out/--plan paths behave
+# like a plain CLI call.
+
+[cue]
+description = "run the auto-dj CLI with any arguments (mise run cue -- --help)"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh"
+
+[status]
+description = "tracks per state; is Rekordbox running?"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh status"
+
+[features]
+description = "decode audio once (cached in ~/.cache/auto-dj) [--workers N]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh features"
+
+[evaluate]
+description = "score the rules against your rated tracks [-v]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh evaluate"
+
+[plan]
+description = "plan cues for MIK / CUE(Auto) / no-hot-cue tracks [--categories ...]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh plan"
+
+[review]
+description = "render the HTML review page for the current plan"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh review"
+
+[apply]
+description = "apply the plan: dry run, or --write with Rekordbox quit [--only ...]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh apply"
+
+[cue-sync]
+description = "copy every track's cues into Rekordbox's contentCue (what the players read): dry run, or --write with Rekordbox quit"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh cue-sync"
+
+[set]
+description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--preview-dir DIR] [--format m4a|wav] [--write]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh set"
+
+[build-set]
+description = "build a set around picked tracks: --pick \"<title or ID>\" ... [--tracks 16] [--arc build|peak|flat] [--from \"<playlist>\"] [--write --name \"<playlist>\"]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh build-set"
+
+[usb-check]
+description = "check that the cues on a USB device are still the collection's [/Volumes/<device>]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh usb-check"
+
+[history]
+description = "list the play histories, or one history's tracks [\"<history>\"]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh history"
+
+[recording]
+description = "split a set recording into tagged AAC tracks: \"<history>\" <mix.wav> --dj NAME --art COVER [--write]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh recording"
+
+[demo]
+description = "render the demo set, cue it, plan the set and open its preview [DIR]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh demo"
+
+# ------------------------------------------------------------------ docs site
+# zensical.toml + docs/, Zensical via uv (common's docs.sh runs `uv sync`
+# first). The walkthrough pages include what `auto-dj demo` prints and link its
+# preview page, so both docs entry points regenerate them first: the AIFFs go
+# to build/demo/ (never into the site), the fragments and preview to docs/demo/
+# (git-ignored). Skipped while the Swift sources are unchanged.
+[docs-demo]
+hide = true
+dir = "{{config_root}}"
+sources = ["Package.swift", "Package.resolved", "Sources/**/*.swift"]
+outputs = ["docs/demo/preview/index.html"]
+run = "{{config_root}}/scripts/cli.sh demo docs/demo --tracks build/demo/tracks --no-open"
+
+[docs-build]
+description = "build the documentation site (demo walkthrough + zensical)"
+dir = "{{config_root}}"
+run = [{ task = "docs-demo" }, "{{config_root}}/.mise/common/scripts/docs.sh build"]
+
+[serve]
+description = "serve the docs site locally (demo walkthrough + zensical)"
+dir = "{{config_root}}"
+run = [{ task = "docs-demo" }, "{{config_root}}/.mise/common/scripts/docs.sh serve"]
+
+# ------------------------------------------------------------------ rollups
+# common's passes, then the Swift ones. Sequential, so fmt's mutating passes
+# never race and fmt precedes lint inside pr.
+
+[fmt]
+description = "format Swift and prose, inject license headers"
+run = [{ task = "fmt-swift" }, { task = "fmt-prose" }, { task = "license" }]
+
+[lint]
+description = "swift format lint + prose lint + license, container, shell and workflow checks"
+run = [
+  { task = "lint-swift" },
+  { task = "license-check" },
+  { task = "lint-containers" },
+  { task = "lint-shell" },
+  { task = "lint-ci-scripts" },
+  { task = "lint-workflows" },
+  { task = "lint-prose" },
+]
+
+[ci]
+description = "the gates the reusable CI workflow runs"
+run = [{ task = "lint" }, { task = "build" }, { task = "test" }, { task = "docs-build" }]
+
+[pr]
+description = "full local gate before a pull request"
+run = [
+  { task = "fmt" },
+  { task = "lint" },
+  { task = "build" },
+  { task = "test" },
+  { task = "app-build" },
+  { task = "docs-build" },
+  { task = "commit" },
+]

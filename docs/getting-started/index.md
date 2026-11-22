@@ -27,8 +27,8 @@ Rekordbox, and links the [preview it produces](../demo/preview/index.html).
 
 ## Install (macOS)
 
-auto-dj is a single Go binary. It needs `ffmpeg` on `PATH` to decode audio. The repository pins both through
-[mise](https://mise.jdx.dev):
+auto-dj is a native macOS app and a command-line tool, both built from this repository in Swift. They need macOS 15 and
+Xcode (for the macOS SDK); the repository pins the Swift toolchain through [mise](https://mise.jdx.dev):
 
 ```sh
 brew install mise
@@ -36,8 +36,15 @@ git clone https://github.com/bitwise-media-group/auto-dj.git
 cd auto-dj
 git submodule update --init   # the shared toolchain, mounted at .mise/
 mise trust --all              # once per clone
-mise install                  # Go, govulncheck and ffmpeg at the pinned versions
-mise run build                # -> ./auto-dj (or: go install ./cmd/auto-dj)
+mise install                  # Swift and XcodeGen at the pinned versions
+mise run build                # the auto-dj CLI, in $(swift build -c release --show-bin-path)
+mise run app-run              # the AutoDJ app (signed Debug build, launched)
+```
+
+The app carries the same CLI inside it. With the app installed, link that onto `PATH` instead of building it:
+
+```sh
+ln -s /Applications/AutoDJ.app/Contents/MacOS/auto-dj ~/.local/bin/auto-dj
 ```
 
 Every command is also a mise task that builds the checkout and runs it (`mise run set "My Playlist"`), so you can skip

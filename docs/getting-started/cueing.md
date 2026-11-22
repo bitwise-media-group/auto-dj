@@ -17,8 +17,8 @@ flowchart LR
 auto-dj features
 ```
 
-ffmpeg decodes each track once and auto-dj stores per-frame band energies in `~/.cache/auto-dj/features/`. The rules use
-the sub band (30–120 Hz) to find where the bass is. Run it again after adding tracks; cached files are skipped.
+auto-dj decodes each track once and stores per-frame band energies in `~/.cache/auto-dj/features/`. The rules use the
+sub band (30–120 Hz) to find where the bass is. Run it again after adding tracks; cached files are skipped.
 
 ## 2. Plan the cues
 

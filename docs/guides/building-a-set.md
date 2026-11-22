@@ -109,7 +109,8 @@ auto-dj set "auto-dj demo" --order suggested --preview-dir ~/Desktop
 
 Every transition has the same shape here, because the tracks were built the same way:
 
-- **G** on the outgoing track sits at its OUT (beat 321 on most), and **E** on the incoming one at its IN;
+- **G** on the outgoing track sits a phrase before its OUT (beat 305 on most), so the transition finishes 25 bars before
+  the end, and **E** on the incoming one at its IN;
 - the incoming bassline arrives 32 beats later, so the planned BASS SWAP memory cue is renamed **BASS SWAP IN**
   (`rename`), and the outgoing track gets **BASS SWAP OUT** at the same moment;
 - the first track's E is START and the last track (Paper Lanterns, now) gets no G.

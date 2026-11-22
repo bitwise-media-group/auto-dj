@@ -4,25 +4,32 @@ Architecture decision records for auto-dj, in [MADR](https://adr.github.io/madr/
 decided, why, and what it was checked against. Read the relevant ones before changing a rule, a threshold or how cues
 are written.
 
-| ADR                                               | Decision                                                           | Date       |
-| ------------------------------------------------- | ------------------------------------------------------------------ | ---------- |
-| [0001](0001-cue-template.md)                      | Use one hot cue and memory cue template on every track             | 2026-10-14 |
-| [0002](0002-analysis-inputs.md)                   | Place cues from Rekordbox's grid and phrases plus a bass analysis  | 2026-10-14 |
-| [0003](0003-cue-placement-rules.md)               | Place each cue with phrase-grid rules scored against hand cues     | 2026-10-14 |
-| [0004](0004-track-states.md)                      | Only cue tracks in a generated state, and never touch rated tracks | 2026-10-14 |
-| [0005](0005-write-master-db-directly.md)          | Write cues straight into Rekordbox's encrypted master.db           | 2026-10-14 |
-| [0006](0006-migrate-older-cue-layouts.md)         | Migrate older hand-cued layouts onto the template, losslessly      | 2026-10-14 |
-| [0007](0007-harmonic-key-check.md)                | Check set keys against Mixed In Key's harmonic chart               | 2026-10-14 |
-| [0008](0008-set-transition-placement.md)          | Place set transitions in beats, aligned on phrases                 | 2026-10-14 |
-| [0009](0009-sets-own-e-and-g.md)                  | Sets own the E and G pads, backed by a transition cache            | 2026-10-14 |
-| [0010](0010-memory-cue-colours-and-renames.md)    | Recolour and normalise memory cue names on set tracks              | 2026-10-16 |
-| [0011](0011-transition-markers-on-both-tracks.md) | Write every transition marker on both tracks, named by side        | 2026-10-16 |
-| [0012](0012-set-previews.md)                      | Render set previews offline with ffmpeg, at a fixed set tempo      | 2026-10-16 |
-| [0013](0013-port-to-go.md)                        | Port rekordbox-cue to Go as auto-dj                                | 2026-10-30 |
-| [0014](0014-generated-demo-set.md)                | Generate the demo set in code and build its walkthrough offline    | 2026-10-30 |
-| [0015](0015-intelligent-playlist-sets.md)         | Build sets from intelligent playlists by evaluating their rules    | 2026-11-01 |
-| [0016](0016-create-playlists-from-histories.md)   | Create playlists from imported play histories                      | 2026-11-07 |
-| [0017](0017-split-recordings-by-alignment.md)     | Split live recordings by aligning the history's tracks with audio  | 2026-11-07 |
+| ADR                                                   | Decision                                                            | Date       |
+| ----------------------------------------------------- | ------------------------------------------------------------------- | ---------- |
+| [0001](0001-cue-template.md)                          | Use one hot cue and memory cue template on every track              | 2026-10-14 |
+| [0002](0002-analysis-inputs.md)                       | Place cues from Rekordbox's grid and phrases plus a bass analysis   | 2026-10-14 |
+| [0003](0003-cue-placement-rules.md)                   | Place each cue with phrase-grid rules scored against hand cues      | 2026-10-14 |
+| [0004](0004-track-states.md)                          | Only cue tracks in a generated state, and never touch rated tracks  | 2026-10-14 |
+| [0005](0005-write-master-db-directly.md)              | Write cues straight into Rekordbox's encrypted master.db            | 2026-10-14 |
+| [0006](0006-migrate-older-cue-layouts.md)             | Migrate older hand-cued layouts onto the template, losslessly       | 2026-10-14 |
+| [0007](0007-harmonic-key-check.md)                    | Check set keys against Mixed In Key's harmonic chart                | 2026-10-14 |
+| [0008](0008-set-transition-placement.md)              | Place set transitions in beats, aligned on phrases                  | 2026-10-14 |
+| [0009](0009-sets-own-e-and-g.md)                      | Sets own the E and G pads, backed by a transition cache             | 2026-10-14 |
+| [0010](0010-memory-cue-colours-and-renames.md)        | Recolour and normalise memory cue names on set tracks               | 2026-10-16 |
+| [0011](0011-transition-markers-on-both-tracks.md)     | Write every transition marker on both tracks, named by side         | 2026-10-16 |
+| [0012](0012-set-previews.md)                          | Render set previews offline with ffmpeg, at a fixed set tempo       | 2026-10-16 |
+| [0013](0013-port-to-go.md)                            | Port rekordbox-cue to Go as auto-dj                                 | 2026-10-30 |
+| [0014](0014-generated-demo-set.md)                    | Generate the demo set in code and build its walkthrough offline     | 2026-10-30 |
+| [0015](0015-intelligent-playlist-sets.md)             | Build sets from intelligent playlists by evaluating their rules     | 2026-11-01 |
+| [0016](0016-create-playlists-from-histories.md)       | Create playlists from imported play histories                       | 2026-11-07 |
+| [0017](0017-split-recordings-by-alignment.md)         | Split live recordings by aligning the history's tracks with audio   | 2026-11-07 |
+| [0018](0018-rewrite-as-a-native-macos-app.md)         | Rewrite auto-dj as a native macOS app in Swift                      | 2026-11-14 |
+| [0019](0019-render-previews-in-process.md)            | Render set previews in-process, in parallel, streamed to playback   | 2026-11-14 |
+| [0020](0020-transition-endings-and-vocal-overlaps.md) | Finish transitions before the last 16 bars and avoid vocal overlaps | 2026-11-15 |
+| [0021](0021-build-sets-around-picked-tracks.md)       | Build sets around picked tracks, by key, tempo, vocals and energy   | 2026-11-21 |
+| [0022](0022-cue-template-on-every-write.md)           | Write the cue template on every track a write touches               | 2026-11-22 |
+| [0023](0023-graded-endings-and-movable-e-g.md)        | Grade where transitions finish, and let sets move any E/G           | 2026-11-22 |
+| [0024](0024-refresh-usb-devices-by-re-exporting.md)   | Refresh USB devices by re-exporting, and check them with usb-check  | 2026-11-22 |
 
 ## Adding a record
 

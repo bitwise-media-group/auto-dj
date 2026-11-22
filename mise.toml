@@ -2,106 +2,24 @@
 # SPDX-License-Identifier: MIT
 #
 # auto-dj consumes the shared toolchain (bitwise-media-group/toolchain) as the
-# .mise/ submodule: pinned tools come from its config.toml (loaded natively as
-# .mise/config.toml), the shared tasks from common/ and the go archetype
-# (golangci-lint, govulncheck, gotestsum, the version-stamped build), and the
-# Makefile is a thin forwarder (.mise/archetypes/go/include.mk). The Go runtime
-# and govulncheck are pinned below; ffmpeg decodes the audio.
+# .mise/ submodule: mise loads its config.toml natively as .mise/config.toml
+# (pinned tools -- bun, markdownlint, addlicense, shellcheck, actionlint,
+# zizmor, uv, ... -- and the [vars] knob defaults). Like glyph, this repo
+# includes common only and carries its Swift build/test/fmt/lint, the Xcode
+# gen/app-* tasks, the auto-dj CLI tasks and the docs site (plus the rollups
+# that wire them in) in tasks.toml, included LAST so its same-named tasks win
+# over common's. The Makefile is a thin forwarder (.mise/common/include.mk).
 #
-# The repo-local tasks below build and run the auto-dj CLI. Arguments after the
-# task name are passed through to the CLI, so these are equivalent:
-#   mise run set "Melodic Set" --preview-dir ~/Desktop
-#   auto-dj set "Melodic Set" --preview-dir ~/Desktop
-# They run in the invoking directory (so relative --out/--plan paths behave
-# like a plain CLI call) against a fresh build of this checkout.
-
-[tools]
-go = "1.27.4"
-"go:golang.org/x/vuln/cmd/govulncheck" = "1.8.0"
-"conda:ffmpeg" = "latest"
-
-[vars]
-app = "auto-dj"
-app_pkg = "./cmd/auto-dj"
+# Swift is pinned here, so `swift build`, `swift test` and `swift format`
+# (which ships with the toolchain) are the same everywhere. AutoDJKit uses
+# Apple frameworks, so it builds against the Xcode SDK on macOS only.
 
 [task_config]
-includes = [".mise/common/tasks.toml", ".mise/archetypes/go/tasks.toml"]  # common first, archetype second
+includes = [".mise/common/tasks.toml", "tasks.toml"] # common first, repo-local Swift + Xcode tasks last
 
-[tasks.cue]
-description = "run the auto-dj CLI with any arguments (mise run cue -- --help)"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj"'
-
-[tasks.status]
-description = "tracks per state; is Rekordbox running?"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" status'
-
-[tasks.features]
-description = "decode audio once (cached in ~/.cache/auto-dj)"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" features'
-
-[tasks.evaluate]
-description = "score the rules against your rated tracks [-v]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" evaluate'
-
-[tasks.plan]
-description = "plan cues for MIK / CUE(Auto) / no-hot-cue tracks [--categories ...]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" plan'
-
-[tasks.review]
-description = "render the HTML review page for the current plan"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" review'
-
-[tasks.apply]
-description = "apply the plan: dry run, or --write with Rekordbox quit [--only ...]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" apply'
-
-[tasks.set]
-description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--preview-dir DIR] [--write]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" set'
-
-[tasks.history]
-description = "list the play histories, or one history's tracks [\"<history>\"]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" history'
-
-[tasks.recording]
-description = "split a set recording into tagged AAC tracks: \"<history>\" <mix.wav> --dj NAME --art COVER [--write]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" recording'
-
-[tasks.demo]
-description = "render the demo set, cue it, plan the set and open its preview [DIR]"
-dir = "{{cwd}}"
-run = 'go build -C "{{config_root}}" -o auto-dj ./cmd/auto-dj && "{{config_root}}/auto-dj" demo'
-
-# The docs site (zensical.toml + docs/, Zensical via uv; the go archetype supplies `sync`).
-# The walkthrough pages include what `auto-dj demo` prints and link its preview page, so
-# every docs entry point regenerates them first: the AIFFs go to build/demo/ (never into
-# the site), the fragments and preview to docs/demo/ (git-ignored). Skipped while the Go
-# sources are unchanged.
-[tasks.docs-demo]
-hide = true
-dir = "{{config_root}}"
-sources = ["go.mod", "go.sum", "cmd/**/*.go", "internal/**/*.go", "internal/review/templates/*.html"]
-outputs = ["docs/demo/preview/index.html"]
-run = "go build -o auto-dj ./cmd/auto-dj && ./auto-dj demo docs/demo --tracks build/demo/tracks --no-open"
-
-[tasks.docs-build]
-description = "build the documentation site (demo walkthrough + zensical)"
-dir = "{{config_root}}"
-depends = ["sync"]
-run = [{ task = "docs-demo" }, "uv run --no-sync zensical build"]
-
-[tasks.serve]
-description = "serve the docs site locally on :8004 (zensical)"
-dir = "{{config_root}}"
-depends = ["sync"]
-run = [{ task = "docs-demo" }, "uv run --no-sync zensical serve"]
+[tools]
+# swift.org toolchain (ADR 0018), built against the Xcode SDK.
+"core:swift" = "6.4.2"
+# Generates AutoDJ.xcodeproj from project.yml (`mise run gen`). macOS only:
+# XcodeGen ships no Linux build, and the Linux CI jobs don't need it.
+"aqua:yonaskolb/XcodeGen" = { version = "2.46.0", os = ["macos"] }

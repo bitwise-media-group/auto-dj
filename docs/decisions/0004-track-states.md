@@ -58,6 +58,9 @@ First run (2026-10-14):
   memory cue.
 - Backup: `~/Library/Pioneer/_cue_work/master.before-claude-cues.20261014.db`.
 
+2026-11-22: E/G hot cues and `set`'s transition markers no longer decide a track's state, and every write puts the
+template on the unrated `mik` / `nohot` tracks it touches ([0022](0022-cue-template-on-every-write.md)).
+
 `set --write` is the one exception to "never modified": by the DJ's decision it writes E/G and set markers, recolours
 and renames memory cues, and renames `JUMP <label>` hot cues on rated tracks too ([0009](0009-sets-own-e-and-g.md),
 [0010](0010-memory-cue-colours-and-renames.md), [0011](0011-transition-markers-on-both-tracks.md)).

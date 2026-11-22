@@ -34,9 +34,9 @@ It renders the ten demo tracks into `build/demo/tracks/` (never into the site) a
 | `docs/demo/plan.md`           | The planned cues, one row per track                   |
 | `docs/demo/set-check.txt`     | `set` on the playlist as filed                        |
 | `docs/demo/set-suggested.txt` | `set --order suggested`                               |
-| `docs/demo/preview/`          | The set-list page, `set.mp3` and the transition clips |
+| `docs/demo/preview/`          | The set-list page, `set.m4a` and the transition clips |
 
-None of it is committed (`docs/demo/` and `build/` are git-ignored). The task is skipped while the Go sources are
+None of it is committed (`docs/demo/` and `build/` are git-ignored). The task is skipped while the Swift sources are
 unchanged, and the output is identical on every run, so the site always shows exactly what the code does. Pages include
 the fragments with `--8<-- "demo/<file>"`; `pymdownx.snippets` runs with `check_paths`, so a page that includes a
 fragment that doesn't exist fails the build.
@@ -54,6 +54,6 @@ relaxes the fenced-code rule, because admonition and tab bodies need indentation
 ## Publishing
 
 The release workflow (`.github/workflows/release.yaml`, calling the shared one in
-`bitwise-media-group/github-workflows`) builds the site with `mise run docs-build` (Go and ffmpeg from the mise pins)
-and deploys it to GitHub Pages on every release, so the site always documents the latest released binary. Pages must be
-set to **Settings → Pages → Source → GitHub Actions**.
+`bitwise-media-group/github-workflows`) builds the site with `mise run docs-build` (Swift from the mise pins) and
+deploys it to GitHub Pages on every release, so the site always documents the latest released binary. Pages must be set
+to **Settings → Pages → Source → GitHub Actions**.

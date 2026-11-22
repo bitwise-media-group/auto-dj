@@ -1,0 +1,123 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+#
+# XcodeGen spec for AutoDJ.xcodeproj (`mise run gen`). The generated project is
+# committed; regenerate after editing this file or adding/removing app sources,
+# and CI fails if the two drift. The app depends on the local Swift package at
+# the repo root (AutoDJKit).
+#
+# Distribution (ADR 0018): Developer ID, hardened runtime, no App Sandbox: the
+# app reads and writes Rekordbox's library (~/Library/Pioneer) and the user's
+# music wherever it lives, which a sandboxed app can't. Set DEVELOPMENT_TEAM
+# here rather than in Xcode's Signing & Capabilities, which `mise run gen`
+# would overwrite. `mise run app-build` builds unsigned (CI); `mise run app-run`
+# builds signed, so macOS keeps the app's folder-access grants across rebuilds.
+name: AutoDJ
+
+options:
+  bundleIdPrefix: uk.co.bitwisemedia
+  # Icon Composer documents are bundles: one resource, not a folder of files.
+  fileTypes:
+    icon:
+      file: true
+      buildPhase: resources
+  deploymentTarget:
+    macOS: "15.0"
+  xcodeVersion: "27.2"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configFiles:
+  Debug: App/Config/Version.xcconfig
+  Release: App/Config/Version.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 6J5C52M5U7
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    ENABLE_PREVIEWS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+
+packages:
+  AutoDJ:
+    path: .
+
+targets:
+  AutoDJ:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/AutoDJ
+        excludes: ["**/.claude"] # agent tooling, never app sources
+      # The app icon (Icon Composer), with its sources in design/app-icon.
+      - path: design/app-icon/AppIcon.icon
+    dependencies:
+      - package: AutoDJ
+        product: AutoDJKit
+      # the command line, embedded as AutoDJ.app/Contents/MacOS/auto-dj and signed with the app
+      - target: auto-dj
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.bitwisemedia.auto-dj
+        PRODUCT_NAME: AutoDJ
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    entitlements:
+      path: App/AutoDJ/AutoDJ.entitlements
+      properties:
+        # unsandboxed (Developer ID): no com.apple.security.app-sandbox
+        com.apple.security.cs.disable-library-validation: false
+    info:
+      path: App/AutoDJ/Info.plist
+      properties:
+        CFBundleDisplayName: auto-dj
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.music
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSHumanReadableCopyright: Copyright 2026 BitWise Media Group Ltd
+        # macOS asks before the app first reads these; the music can live anywhere.
+        NSDocumentsFolderUsageDescription: auto-dj reads your Rekordbox tracks to analyse them and render set previews.
+        NSDesktopFolderUsageDescription: auto-dj reads your Rekordbox tracks to analyse them and render set previews.
+        NSDownloadsFolderUsageDescription: auto-dj reads your Rekordbox tracks to analyse them and render set previews.
+        NSRemovableVolumesUsageDescription: auto-dj reads tracks and gig recordings on external drives and USB sticks.
+        NSNetworkVolumesUsageDescription: auto-dj reads tracks stored on network drives.
+
+  # The auto-dj command line, built from the same entry point as SwiftPM's `auto-dj` product
+  # against the package's AutoDJCommands library. It only exists to be embedded in the app
+  # (SKIP_INSTALL keeps `xcodebuild archive` an app archive); link it onto PATH with
+  #   ln -s /Applications/AutoDJ.app/Contents/MacOS/auto-dj ~/.local/bin/auto-dj
+  auto-dj:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/AutoDJCLI
+    dependencies:
+      - package: AutoDJ
+        product: AutoDJCommands
+    settings:
+      base:
+        PRODUCT_NAME: auto-dj
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.bitwisemedia.auto-dj.cli
+        SKIP_INSTALL: YES
+        # an Info.plist in the binary (__TEXT,__info_plist): codesign takes the identifier from
+        # it, and it carries the app's version
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+
+schemes:
+  AutoDJ:
+    build:
+      targets:
+        AutoDJ: all
+    run:
+      config: Debug
+    archive:
+      config: Release

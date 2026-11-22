@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: MIT
 
 # Release -- release-please keeps a release PR current from the Conventional Commit
-# history; merging it cuts a draft vX.Y.Z release. Then `mise run release --draft`
-# (GoReleaser, .goreleaser.yaml) builds the archives, checksums and SBOMs,
-# Developer ID-signs and notarizes the darwin binaries, cosign-signs every binary
-# and opens the Homebrew cask PR, and the workflow attests build provenance and
-# publishes the release last. `mise run docs-build` (which renders the demo set
-# first) rebuilds the docs site, published to GitHub Pages on the same release.
+# history; merging it cuts the vX.Y.Z tag + GitHub release and bumps the app's
+# MARKETING_VERSION (App/Config/Version.xcconfig, an extra-file in
+# release-please-config.json). There is no .goreleaser.yaml: Xcode Cloud builds,
+# Developer ID-signs and notarizes AutoDJ.app, which embeds the auto-dj CLI
+# (Contents/MacOS/auto-dj), so the goreleaser job is skipped. zensical.toml is
+# present, so the docs job runs `mise run docs-build` (which renders the demo set
+# with the Swift CLI first, hence macOS: runs-on) and publishes ./site to GitHub
+# Pages on the same release.
 name: Release
 
 on:
@@ -42,6 +44,8 @@ jobs:
       # publish the docs site to GitHub Pages (docs job, gated on zensical.toml)
       pages: write
     with:
+      # the docs job builds the Swift CLI to render the demo walkthrough
+      runs-on: macos-latest
       # author the release PR as the FF Merge App so it can auto-merge (a
       # GITHUB_TOKEN-authored push fires no workflow_run to trigger the merge);
       # required here, since the same App mints the Homebrew tap token

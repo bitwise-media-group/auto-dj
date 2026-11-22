@@ -7,7 +7,7 @@ description:
 
 ```text
 auto-dj recording "<history>" <mix.wav> --dj NAME --art COVER [--album NAME] [--date YYYY-MM-DD]
-                  [--out DIR] [--realign] [--no-export] [--no-trim] [--encoder auto|afconvert|ffmpeg]
+                  [--out DIR] [--realign] [--no-export] [--no-trim]
                   [--write [--playlist NAME] [--folder FOLDER]]
 ```
 
@@ -55,12 +55,11 @@ aligns and reports.
 
 ## Encoding
 
-`--encoder auto` (the default) uses Apple's AAC encoder through `afconvert` when it works, else ffmpeg (Apple's encoder
-through AudioToolbox when it works, else ffmpeg's own). The recording is decoded once and split at exact samples, and
-each file's edit list trims the encoder's priming and padding: every file is checked to play exactly its samples, so the
-album plays back gaplessly as the mix. Each file keeps the track's title, artist, composer, genre, comment and label (as
-grouping); the album is `--album` (default: the history's name), the album artist `--dj`, the date `--date` (default:
-the history's day), and the cover `--art` (the tracks' own art is not used).
+Each file is 256 kb/s AAC from Apple's encoder (AVFoundation). The recording is decoded once and split at exact samples,
+and each file's edit list trims the encoder's priming and padding: every file is checked to play exactly its samples, so
+the album plays back gaplessly as the mix. Each file keeps the track's title, artist, composer, genre, comment and label
+(as grouping); the album is `--album` (default: the history's name), the album artist `--dj`, the date `--date`
+(default: the history's day), and the cover `--art` (the tracks' own art is not used).
 
 The silence before the music and after it (below −60 dBFS: the recorder runs a moment before you start and after you
 stop) is left out of the first and last files, keeping 10 ms before the first sound. `--no-trim` keeps it, so the files
@@ -75,4 +74,6 @@ With Rekordbox quit, `--write` also:
 - creates a playlist of the kept tracks, named after the history (`--playlist` to rename, `--folder` to put it in a
   playlist folder), refused if the name is taken ([ADR 0016](../decisions/0016-create-playlists-from-histories.md)).
 
-No cues change: run `set --write` on the playlist for that.
+The playlist's tracks that have no auto-dj cues yet (`mik`, `nohot`) get the cue template, as `apply --write` would
+place it ([ADR 0022](../decisions/0022-cue-template-on-every-write.md)); no other cues change: run `set --write` on the
+playlist for the set's.
