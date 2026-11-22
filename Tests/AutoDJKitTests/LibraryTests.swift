@@ -191,7 +191,9 @@ import Testing
         create table djmdContent (ID varchar(255) primary key, Title varchar(255), ArtistID varchar(255),
           AlbumID varchar(255), GenreID varchar(255), BPM integer, Commnt varchar(255), ReleaseYear integer,
           RemixerID varchar(255), LabelID varchar(255), OrgArtistID varchar(255), KeyID varchar(255),
-          ComposerID varchar(255), FolderPath varchar(255), rb_local_deleted integer default 0);
+          ComposerID varchar(255), FolderPath varchar(255), Rating integer, rb_local_deleted integer default 0);
+        create table djmdCue (ID varchar(255) primary key, ContentID varchar(255), Kind integer, InMsec integer,
+          rb_local_deleted integer default 0);
         create table djmdArtist (ID varchar(255) primary key, Name varchar(255));
         create table djmdAlbum (ID varchar(255) primary key, Name varchar(255), AlbumArtistID varchar(255));
         create table djmdGenre (ID varchar(255) primary key, Name varchar(255));
@@ -270,7 +272,9 @@ import Testing
         let (a, b) = (dir + "/domino.aiff", dir + "/second.aiff")
         for f in [a, b] { FileManager.default.createFile(atPath: f, contents: Data()) }
         try d.exec("update djmdContent set FolderPath = ? where ID = '10'", a)
-        try d.exec("update djmdContent set FolderPath = ? where ID = '11'", b)
+        try d.exec("update djmdContent set FolderPath = ?, Rating = 4 where ID = '11'", b)
+        try d.exec("update djmdContent set Commnt = '126 - 9A - 7' where ID = '12'")
+        try d.exec("insert into djmdCue values ('q1', '10', 3, 61500, 0), ('q2', '10', 1, 1000, 0)")
         let fd = dir + "/features"
         try FileManager.default.createDirectory(atPath: fd, withIntermediateDirectories: true)
         FileManager.default.createFile(atPath: Features.cachePath(featureDir: fd, audioPath: a), contents: Data())
@@ -285,6 +289,14 @@ import Testing
             ))
         #expect(x.analysis == .analysed && ts["11"]?.analysis == .missing && ts["12"]?.analysis == .noAudio)
         #expect(ts["11"]?.year == 0 && ts["12"]?.artist == "")
+        // energy: the rating, else Mixed In Key's (its tag, else the comment); "8A" has none
+        #expect(x.energy == nil && x.rating == 0)
+        #expect(ts["11"]?.energy == Energy.Level(stars: 4, source: .rating))
+        #expect(ts["12"]?.energy == Energy.Level(stars: 3.5, source: .mik))
+        let tagged = try Library.tracks(d, featureDir: fd, energyTags: [a: 9]).first { $0.id == "10" }
+        #expect(tagged?.energy == Energy.Level(stars: 4.5, source: .mik))
+        // previews start on the DROP hot cue (slot C)
+        #expect(x.drop == 61.5 && ts["11"]?.drop == nil)
         #expect([LibraryTrack.Analysis.analysed, .noAudio, .missing].sorted() == [.missing, .noAudio, .analysed])
     }
 

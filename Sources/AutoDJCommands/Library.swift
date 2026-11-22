@@ -59,6 +59,8 @@ struct FeaturesCmd: AsyncParsableCommand {
                 files.append(fp)
             }
         }
+        let tags = try await EnergyTags.refresh(files, cache: p.energyTags)
+        if tags > 0 { print("read Mixed In Key's energy tag from \(tags) file(s)") }
         let res = try await Features.extractMany(files, featureDir: p.featureDir, workers: workers)
         var n = Counter()
         for (f, r) in zip(files, res) {

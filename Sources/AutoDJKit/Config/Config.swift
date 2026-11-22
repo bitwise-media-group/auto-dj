@@ -230,6 +230,8 @@ public struct Paths: Sendable {
     public var ledger: String { join(backupDir, "applied-tracks.json") }
     /// The per-set render cache (PCM chunks keyed by segment parameters).
     public var renderDir: String { join(workDir, "renders") }
+    /// Mixed In Key's energy level per audio file (`EnergyTags`).
+    public var energyTags: String { join(workDir, "energy-tags.json") }
 }
 
 /// The thresholds for the rules. Units: beats (1-based beat index into the Rekordbox grid) and

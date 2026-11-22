@@ -22,6 +22,7 @@ public struct AutoDJ: AsyncParsableCommand {
                 auto-dj review              # -> <work>/review.html
                 auto-dj apply --write       # quit Rekordbox first; backs up master.db
                 auto-dj set "Dark Mode"     # key check + set cues (E/G + BASS SWAP) for a playlist
+                auto-dj build-set --pick "Jolene" --pick "Levels"   # a set around picked tracks
 
             After a gig (plug the USB in so Rekordbox imports the history):
                 auto-dj history             # the play histories
@@ -32,7 +33,7 @@ public struct AutoDJ: AsyncParsableCommand {
             """,
         subcommands: [
             Status.self, FeaturesCmd.self, EvaluateCmd.self, PlanCmd.self, ReviewCmd.self, ApplyCmd.self,
-            CueSyncCmd.self, SetCmd.self,
+            CueSyncCmd.self, SetCmd.self, BuildCmd.self,
             HistoryCmd.self, RecordingCmd.self, DemoCmd.self,
         ]
     )

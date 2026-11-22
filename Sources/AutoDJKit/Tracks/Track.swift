@@ -9,6 +9,12 @@ public struct Track: Sendable, Identifiable {
     public var id: String
     public var title: String
     public var rating = 0
+    /// Rekordbox's key name ("Am", "F#"), "" when unknown.
+    public var key = ""
+    /// djmdContent.Commnt.
+    public var comment = ""
+    /// Mixed In Key's `EnergyLevel` tag (1-10) from the audio file, nil without one (`EnergyTags`).
+    public var mikEnergy: Int?
     public var path = ""
     public var bpm = 0.0
     /// djmdContent.Length (s), 0 when unknown.
@@ -22,7 +28,26 @@ public struct Track: Sendable, Identifiable {
     /// The audio file exists here (streaming tracks have none).
     public var local = false
     /// Per-beat features (`Features` columns); nil without audio analysis.
-    public var fb: [[Double]]?
+    public var fb: [[Double]]? {
+        didSet {
+            bass = fb.map { fb in Track.normLevel(fb.map { $0[0] }) }
+            loudEnd = fb.flatMap(Track.loudEnd)
+        }
+    }
+    /// `normLevel` of the sub-bass column and `loudEnd`, kept with fb: transitions read them
+    /// many times.
+    public private(set) var bass: [Double]?
+    public private(set) var loudEnd: Int?
+
+    /// The last beat (1-based) within 20 dB of the track's loud parts, nil when none is.
+    static func loudEnd(_ fb: [[Double]]) -> Int? {
+        let tot = fb.map { log10($0[0] + $0[1] + $0[2] + $0[3] + 1e-9) }
+        let thr = Num.percentile(tot, 90) - 2.0
+        return tot.lastIndex(where: { $0 > thr }).map { $0 + 1 }
+    }
+
+    /// The normalised sub-bass level per beat (`normLevel(col(0))`).
+    public var bassLevel: [Double] { bass ?? Track.normLevel(col(0)) }
     /// Per-beat vocal confidence (0...1, `Vocals.perBeat`), nil when not analysed.
     public var vocals: [Double]?
 
@@ -47,6 +72,7 @@ public struct Track: Sendable, Identifiable {
             (rows, cues) = try rb.sql.loadTracksAndCues()
         }
         let auto = try Ledger.load(paths.ledger)
+        let tags = EnergyTags.cached(paths.energyTags)
         let wanted = Set(want)
         var out: [Track] = []
         for r in rows {
@@ -66,6 +92,9 @@ public struct Track: Sendable, Identifiable {
             let fp = Config.mapPath(r.folderPath)
             var t = Track(id: r.id, title: r.title)
             t.rating = r.rating
+            t.key = r.key
+            t.comment = r.comment
+            t.mikEnergy = tags[fp]
             t.path = fp
             t.bpm = r.bpm
             t.length = r.length

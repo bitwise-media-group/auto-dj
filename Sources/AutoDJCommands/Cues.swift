@@ -5,13 +5,21 @@ import ArgumentParser
 import AutoDJKit
 import Foundation
 
-struct EvaluateCmd: ParsableCommand {
+struct EvaluateCmd: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "evaluate", abstract: "score the rules against your rated tracks")
     @OptionGroup var g: Globals
     @Flag(name: .shortAndLong, help: "show each track's cues (yours / the rules')") var verbose = false
+    @Flag(help: "instead: where each track's energy comes from, and Mixed In Key's levels against your ratings")
+    var energy = false
 
-    func run() throws {
+    func run() async throws {
+        if energy {
+            let n = try await EnergyTags.refresh(g.paths)
+            if n > 0 { printErr("read Mixed In Key's energy tag from \(n) file(s)") }
+            print(Energy.report(try Track.build(g.paths, allCategories, log: printErr)).joined(separator: "\n"))
+            return
+        }
         let ts = try Track.build(g.paths, ["manual"], log: printErr)
         print(Evaluate.format(Evaluate.score(ts, .default, verbose: verbose)))
     }

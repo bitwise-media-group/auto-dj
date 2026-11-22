@@ -71,6 +71,8 @@ final class AppModel {
         let r = await run { () -> (LibraryStatus, [Playlist], [History], [LibraryTrack]) in
             let rb = try RekordboxDB.readCopy(p.masterDB)
             let (tr, cues) = try rb.sql.loadTracksAndCues()
+            // Mixed In Key's energy tags: only new or re-tagged files are opened (ADR 0021)
+            try await EnergyTags.refresh(tr.map { Config.mapPath($0.folderPath) }, cache: p.energyTags)
             let auto = try Ledger.load(p.ledger)
             var counts: [String: Int] = [:]
             var order: [String] = []
@@ -84,7 +86,8 @@ final class AppModel {
             let cats = order.map { ($0, counts[$0]!) }.sorted { $0.1 > $1.1 }
             return (
                 LibraryStatus(tracks: tr.count, categories: cats, featureFiles: files), try rb.sql.listPlaylists(),
-                try rb.sql.listHistories(), try Library.tracks(rb.sql, featureDir: p.featureDir)
+                try rb.sql.listHistories(),
+                try Library.tracks(rb.sql, featureDir: p.featureDir, energyTags: EnergyTags.cached(p.energyTags))
             )
         }
         if let r {

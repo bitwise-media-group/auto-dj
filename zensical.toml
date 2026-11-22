@@ -48,6 +48,7 @@ nav = [
     { "apply" = "commands/apply.md" },
     { "cue-sync" = "commands/cue-sync.md" },
     { "set" = "commands/set.md" },
+    { "build-set" = "commands/build-set.md" },
     { "history" = "commands/history.md" },
     { "recording" = "commands/recording.md" },
     { "demo" = "commands/demo.md" },
@@ -81,6 +82,7 @@ nav = [
     { "0018 Native macOS app" = "decisions/0018-rewrite-as-a-native-macos-app.md" },
     { "0019 In-process previews" = "decisions/0019-render-previews-in-process.md" },
     { "0020 Transition endings and vocals" = "decisions/0020-transition-endings-and-vocal-overlaps.md" },
+    { "0021 Building sets around picks" = "decisions/0021-build-sets-around-picked-tracks.md" },
   ] },
 ]
 

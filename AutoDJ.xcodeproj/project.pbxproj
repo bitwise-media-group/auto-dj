@@ -19,6 +19,7 @@
 		7B734E71692290F2606F0E9C /* auto-dj in Embed Dependencies */ = {isa = PBXBuildFile; fileRef = 6CE07AF8813F8F55F879FA20 /* auto-dj */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		7ECFFF8DE9CE2E6F329E28C5 /* TrackTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A2A529FB11CEAECCC8917 /* TrackTable.swift */; };
 		919378F2875B2593D2F1E34E /* AutoDJKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4C3D71A47376925D190145DD /* AutoDJKit */; };
+		91C088B79AF191E2B4D7F4C4 /* BuildViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4234CA7B6A93B3743992C85 /* BuildViews.swift */; };
 		B27F48D1ECD7740DFCA76EAA /* SetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327760C081D67E591606BA02 /* SetModel.swift */; };
 		B616C977BDD6DB6B0D2A82D1 /* SetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E1537D07A8691B6032A862 /* SetsView.swift */; };
 		D928EDC13585913DDEBEA050 /* LibraryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6459D9A3FBC89B93BD323FC5 /* LibraryViews.swift */; };
@@ -66,6 +67,7 @@
 		B0E1537D07A8691B6032A862 /* SetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetsView.swift; sourceTree = "<group>"; };
 		C11B94CF4A378072FDDCA25C /* TrackTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTimeline.swift; sourceTree = "<group>"; };
 		C211137FF3FCB5E2385705D1 /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
+		C4234CA7B6A93B3743992C85 /* BuildViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildViews.swift; sourceTree = "<group>"; };
 		CBF8FBDB64CF98BDBA2ED7EF /* AutoDJ.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AutoDJ.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -146,6 +148,7 @@
 				A081A4BC4977D8BEEA820E7C /* AppModel.swift */,
 				592955780A05E335E68468AF /* AutoDJ.entitlements */,
 				6CA90063DF2177546E9B37AC /* AutoDJApp.swift */,
+				C4234CA7B6A93B3743992C85 /* BuildViews.swift */,
 				36698EFC44AB5281775E1D65 /* CueStyle.swift */,
 				7B2F148C0AC18A31D670285C /* Info.plist */,
 				6459D9A3FBC89B93BD323FC5 /* LibraryViews.swift */,
@@ -261,6 +264,7 @@
 			files = (
 				3160CDD5F03FE6E25063F796 /* AppModel.swift in Sources */,
 				48CCD275B7ADCFCF88695A60 /* AutoDJApp.swift in Sources */,
+				91C088B79AF191E2B4D7F4C4 /* BuildViews.swift in Sources */,
 				410032D33B4E201C12E2266B /* CueStyle.swift in Sources */,
 				D928EDC13585913DDEBEA050 /* LibraryViews.swift in Sources */,
 				25B704FB958B2A5D436DFA5F /* MixTimelineView.swift in Sources */,

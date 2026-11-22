@@ -15,6 +15,10 @@ final class SetsState {
     var model: SetModel?
     var reorderOnWrite = true
     var exportFormat = ExportFormat.m4a
+    /// Library tracks picked to build a set around (IDs, in pick order).
+    var picks: [String] = []
+    /// A draft the Library asked for, opened when the Sets section shows.
+    var pendingDraft: SetModel.Draft?
 }
 
 struct SetsView: View {
@@ -23,6 +27,7 @@ struct SetsView: View {
     /// Kept by the window, so the open set survives switching to another section and back.
     @Bindable var state: SetsState
     @State private var confirmWrite = false
+    @State private var saving = false
     let renderer: SetRenderer
 
     private var model: SetModel? { state.model }
@@ -34,25 +39,45 @@ struct SetsView: View {
             Divider()
             if let model {
                 if model.loading {
-                    ProgressView("Loading \(model.playlist)…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ProgressView(
+                        model.draft != nil ? "Building a set around your picks…" : "Loading \(model.playlist)…"
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     SetEditor(model: model)
                 }
             } else {
                 ContentUnavailableView(
                     "Pick a playlist", systemImage: "music.note.list",
-                    description: Text("Choose a playlist or intelligent playlist to plan a set.")
+                    description: Text(
+                        "Choose a playlist or intelligent playlist to plan a set, or pick tracks in the Library to "
+                            + "build one around them.")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onChange(of: state.picked) { _, name in
+            guard let name else {
+                if state.model?.draft == nil { state.model = nil }  // opening a draft clears the playlist
+                return
+            }
             player.stop()
-            guard let name else { return state.model = nil }
             let m = SetModel(app: app, player: player, playlist: name, renderer: renderer)
             state.model = m
             Task { await m.load() }
+        }
+        .onChange(of: state.pendingDraft != nil, initial: true) { _, pending in
+            guard pending, let d = state.pendingDraft else { return }
+            state.pendingDraft = nil
+            player.stop()
+            let m = SetModel(app: app, player: player, draft: d, renderer: renderer)
+            state.model = m
+            state.picked = nil
+            Task { await m.load() }
+        }
+        .sheet(isPresented: $saving) {
+            if let model { SaveDraftSheet(model: model) { state.picked = $0 } }
         }
         .confirmationDialog("Write the set's cues to Rekordbox?", isPresented: $confirmWrite) {
             Button("Write") { Task { await model?.write(reorder: reorderOnWrite && !(model?.intelligent ?? true)) } }
@@ -77,7 +102,25 @@ struct SetsView: View {
                 }
             }
             .frame(maxWidth: 320)
-            if let model {
+            if let model, model.draft != nil {
+                Divider().frame(height: 18)
+                Label("Draft", systemImage: "wand.and.stars").foregroundStyle(.secondary)
+                    .help("Built around your picks; save it as a playlist to write its cues")
+                BPMControl(model: model)
+                Spacer()
+                if model.rendering { ProgressView().controlSize(.small) }
+                Button("Rebuild") { Task { await model.rebuild() } }
+                    .disabled(model.loading)
+                    .help("Build again from the picks, leaving out the tracks you re-rolled or removed")
+                Button("Save as Playlist…") { saving = true }
+                    .disabled(app.rekordboxRunning || model.loading || model.tracks.isEmpty)
+                    .help(app.rekordboxRunning ? "Quit Rekordbox to save" : "Create a playlist with this order")
+                Picker("", selection: $state.exportFormat) {
+                    ForEach(ExportFormat.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .frame(width: 70)
+                Button("Export…") { export(model) }.disabled(model.plan == nil)
+            } else if let model {
                 Divider().frame(height: 18)
                 BPMControl(model: model)
                 Spacer()
@@ -214,6 +257,13 @@ struct TrackList: View {
             List(selection: $model.selection) {
                 ForEach(Array(model.tracks.enumerated()), id: \.element.no) { i, t in
                     TrackRowView(model: model, index: i, track: t).tag(t.no)
+                        .contextMenu {
+                            if model.draft != nil {
+                                Button("Re-roll", systemImage: "die.face.5") { Task { await model.reroll(t.no) } }
+                                    .disabled(model.isPick(t.no))
+                                Button("Remove", systemImage: "minus.circle") { model.remove(t.no) }
+                            }
+                        }
                 }
                 .onMove { model.move(from: $0, to: $1) }
             }
@@ -233,7 +283,15 @@ struct TrackRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title).lineLimit(1)
                 HStack(spacing: 6) {
+                    if model.isPick(track.no) {
+                        Image(systemName: "pin.fill").font(.caption2).foregroundStyle(.tint).help("Your pick")
+                    }
                     Text(String(format: "%.1f BPM", track.bpm)).font(.caption).foregroundStyle(.secondary)
+                    if let e = model.energy(for: track.no) {
+                        Label(e.label, systemImage: e.source == .rating ? "star.fill" : "star.leadinghalf.filled")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .help(e.source == .rating ? "Energy: your rating" : "Energy: Mixed In Key's level, halved")
+                    }
                     if let a = model.action(for: track.no), !a.warnings.isEmpty {
                         Label("\(a.warnings.count)", systemImage: "exclamationmark.circle").font(.caption)
                             .foregroundStyle(.orange)

@@ -133,6 +133,11 @@ description = "prepare a set from a playlist: \"<playlist>\" [--order ...] [--pr
 dir = "{{cwd}}"
 run = "{{config_root}}/scripts/cli.sh set"
 
+[build-set]
+description = "build a set around picked tracks: --pick \"<title or ID>\" ... [--tracks 16] [--arc build|peak|flat] [--from \"<playlist>\"] [--write --name \"<playlist>\"]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh build-set"
+
 [history]
 description = "list the play histories, or one history's tracks [\"<history>\"]"
 dir = "{{cwd}}"

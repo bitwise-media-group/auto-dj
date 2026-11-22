@@ -140,6 +140,10 @@ public struct TrackRow: Sendable {
     public var length: Double
     public var analysisDataPath: String
     public var uuid: String
+    /// Rekordbox's key name ("Am", "F#"), "" when unknown.
+    public var key = ""
+    /// djmdContent.Commnt (Mixed In Key writes its energy level here, ADR 0021).
+    public var comment = ""
 }
 
 extension SQLite {
@@ -147,14 +151,15 @@ extension SQLite {
     public func loadTracksAndCues() throws -> ([TrackRow], [String: [Cue]]) {
         let tracks = try query(
             """
-            select ID, Title, coalesce(Rating,0), FolderPath, BPM, Length,
-                   AnalysisDataPath, UUID from djmdContent where rb_local_deleted=0
+            select c.ID, c.Title, coalesce(c.Rating,0), c.FolderPath, c.BPM, c.Length,
+                   c.AnalysisDataPath, c.UUID, coalesce(k.ScaleName, ''), coalesce(c.Commnt, '')
+              from djmdContent c left join djmdKey k on k.ID = c.KeyID where c.rb_local_deleted=0
             """
         ).map { r in
             TrackRow(
                 id: r.string(0), title: r.string(1), rating: r.int(2), folderPath: r.string(3),
                 bpm: r.double(4) / 100, length: r.double(5), analysisDataPath: r.string(6),
-                uuid: r.string(7))
+                uuid: r.string(7), key: r.string(8), comment: r.string(9))
         }
         var by: [String: [Cue]] = [:]
         for r in try query(

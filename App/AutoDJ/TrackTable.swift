@@ -48,6 +48,8 @@ struct TrackRowData: Identifiable {
     var bpm: Double
     var key: String
     var status: TrackStatus
+    /// Your rating, else Mixed In Key's level halved (ADR 0021).
+    var energy: Energy.Level?
     /// A cue plan's hot cue slots ("A"...), memory cue colours and flags.
     var hot: [String] = []
     var memory: [Int?] = []
@@ -65,10 +67,10 @@ struct TrackRowData: Identifiable {
 }
 
 enum TrackColumn: String, CaseIterable {
-    case no, track, artist, year, genre, tempo, key, cues, memory, flags, status
+    case no, track, artist, year, genre, tempo, key, energy, cues, memory, flags, status
 
     /// The library's and histories' columns.
-    static let library: [TrackColumn] = [.no, .track, .artist, .year, .genre, .tempo, .key, .status]
+    static let library: [TrackColumn] = [.no, .track, .artist, .year, .genre, .tempo, .key, .energy, .status]
 
     var title: String {
         switch self {
@@ -79,6 +81,7 @@ enum TrackColumn: String, CaseIterable {
         case .genre: "Genre"
         case .tempo: "Tempo"
         case .key: "Key"
+        case .energy: "Energy"
         case .cues: "Hot cues"
         case .memory: "Memory"
         case .flags: "Flags"
@@ -96,6 +99,7 @@ enum TrackColumn: String, CaseIterable {
         case .genre: 140
         case .tempo: 84
         case .key: 70
+        case .energy: 84
         case .cues: 170
         case .memory: 120
         case .flags: 180
@@ -117,7 +121,7 @@ enum TrackColumn: String, CaseIterable {
         }
     }
 
-    var trailing: Bool { self == .no || self == .year || self == .tempo }
+    var trailing: Bool { self == .no || self == .year || self == .tempo || self == .energy }
 
     /// Whether a is before b, ascending; empty values sort last.
     func less(_ a: TrackRowData, _ b: TrackRowData) -> Bool {
@@ -141,6 +145,7 @@ enum TrackColumn: String, CaseIterable {
             if (x == nil) != (y == nil) { return x != nil }
             guard let x, let y else { return false }
             return (x.n, x.letter) < (y.n, y.letter)
+        case .energy: return num(a.energy?.stars ?? 0, b.energy?.stars ?? 0)
         case .cues: return (a.hot.count, a.hot.joined()) < (b.hot.count, b.hot.joined())
         case .memory: return a.memory.count < b.memory.count
         case .flags:
@@ -160,6 +165,9 @@ struct TrackTable: View {
     var available = TrackColumn.library
     /// The selected row, when rows can be selected.
     var selection: Binding<String?>?
+    /// Space and Return on the selected row (e.g. preview it, pick it).
+    var onSpace: ((String) -> Void)?
+    var onReturn: ((String) -> Void)?
     /// The sort column and direction, kept per table ("library", "history", "plan") across
     /// sections and launches.
     @AppStorage private var sortRaw: String
@@ -177,9 +185,10 @@ struct TrackTable: View {
     /// name keys the table's saved sort.
     init(
         _ name: String, rows: [TrackRowData], numbered: Bool = false, available: [TrackColumn] = TrackColumn.library,
-        selection: Binding<String?>? = nil
+        selection: Binding<String?>? = nil, onSpace: ((String) -> Void)? = nil, onReturn: ((String) -> Void)? = nil
     ) {
         (self.rows, self.numbered, self.available, self.selection) = (rows, numbered, available, selection)
+        (self.onSpace, self.onReturn) = (onSpace, onReturn)
         _sortRaw = AppStorage(wrappedValue: "", "trackTable.\(name).sort")
         _ascending = AppStorage(wrappedValue: true, "trackTable.\(name).ascending")
     }
@@ -214,7 +223,7 @@ struct TrackTable: View {
         let ws = widths
         var cs = available.filter { numbered || $0 != .no }
         func need() -> CGFloat { cs.reduce(CGFloat(cs.count - 1)) { $0 + (ws[$1] ?? $1.minWidth) } }
-        for drop in [TrackColumn.genre, .year, .memory, .flags, .artist] where width > 0 && need() > width {
+        for drop in [TrackColumn.genre, .year, .energy, .memory, .flags, .artist] where width > 0 && need() > width {
             cs.removeAll { $0 == drop }
         }
         return cs
@@ -281,6 +290,16 @@ struct TrackTable: View {
                 }
                 .onKeyPress(.escape) {
                     focused = false
+                    return .handled
+                }
+                .onKeyPress(.space) {
+                    guard let s = selected, let onSpace else { return .ignored }
+                    onSpace(s)
+                    return .handled
+                }
+                .onKeyPress(.return) {
+                    guard let s = selected, let onReturn else { return .ignored }
+                    onReturn(s)
                     return .handled
                 }
             }
@@ -411,6 +430,7 @@ struct TrackRow: View {
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(Deck.fg)
         case .key: KeyChip(key: r.key, camelot: r.camelot)
+        case .energy: EnergyChip(energy: r.energy)
         case .status: StatusChip(status: r.status)
         case .cues:
             HStack(spacing: 3) {
@@ -467,6 +487,26 @@ struct KeyChip: View {
                 .background(minor ? color : color.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(color, lineWidth: minor ? 0 : 1.2))
                 .help(key)
+        } else {
+            Text("—").foregroundStyle(Deck.dim)
+        }
+    }
+}
+
+/// The track's energy: your rating in stars, or Mixed In Key's level (halved, dimmed, "~").
+struct EnergyChip: View {
+    let energy: Energy.Level?
+
+    var body: some View {
+        if let e = energy {
+            HStack(spacing: 3) {
+                Text(e.label).font(.system(size: 12.5, weight: .semibold, design: .monospaced))
+                Image(systemName: e.source == .rating ? "star.fill" : "star.leadinghalf.filled")
+                    .font(.system(size: 9))
+            }
+            .foregroundStyle(e.source == .rating ? Deck.fg : Deck.dim)
+            .help(
+                e.source == .rating ? "Your rating" : "Mixed In Key's energy level, halved (rate the track to set it)")
         } else {
             Text("—").foregroundStyle(Deck.dim)
         }

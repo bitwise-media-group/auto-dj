@@ -63,6 +63,7 @@ mise run review                      # -> ~/.cache/auto-dj/review.html (open in 
 mise run apply                       # dry run on a copy of master.db
 mise run apply --write               # QUIT REKORDBOX FIRST. Backs up master.db, then writes
 mise run demo                        # the generated demo set, end to end, without Rekordbox
+mise run build-set --pick "Jolene" --pick "Levels"   # a set around picked tracks (see below)
 mise run history                     # play histories (after a gig: see below)
 mise run cue -- set --help           # mise keeps a bare --help for itself; pass it through `cue --`
 ```
@@ -138,6 +139,21 @@ Options: `plan --categories mik nohot auto` (or `mik,nohot,auto`) picks targets 
 `apply --only "Loleatta" "Trust Me"` limits a write. `--rb-dir` and `--work-dir` point at another library or cache.
 
 After writing, open Rekordbox and spot-check. Then re-export or sync your USB sticks.
+
+### Building a set around picked tracks
+
+```sh
+mise run build-set --pick "Loleatta" --pick "Jolene" --pick "Levels" --tracks 14 --arc peak
+mise run build-set --pick "Loleatta" --from "Deep House" --opener --tracks 20 --write --name "Sunday"
+```
+
+Fills a set around the picked tracks (by title or content ID) from the library, or from one playlist with `--from`:
+harmonic keys, tempos within 6% of the set tempo, transitions planned as `set` plans them so vocals don't overlap, and
+energy following an arc (`build`, `peak` or `flat`). Energy is your star rating, else Mixed In Key's `EnergyLevel` tag
+halved; auto-dj never writes ratings. `--write --name` saves it as a playlist (Rekordbox quit), ready for `set`. In the
+app, pick tracks in the Library (Return; Space previews from the drop) and press **Build Set** to get a draft in Sets
+that you can re-roll and listen to before saving it
+([ADR 0021](docs/decisions/0021-build-sets-around-picked-tracks.md)).
 
 ### After a gig (split the recording)
 

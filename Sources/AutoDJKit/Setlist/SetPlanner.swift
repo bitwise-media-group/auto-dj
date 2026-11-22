@@ -166,18 +166,15 @@ public enum SetPlanner {
 
     /// The last beat with audio within 20 dB of the track's loud parts.
     public static func lastAudioBeat(_ t: Track) -> Int {
-        guard let fb = t.fb else { return t.beats.count }
-        let tot = fb.map { log10($0[0] + $0[1] + $0[2] + $0[3] + 1e-9) }
-        let thr = Num.percentile(tot, 90) - 2.0
-        if let i = tot.lastIndex(where: { $0 > thr }) { return i + 1 }
-        return t.beats.count
+        guard t.fb != nil else { return t.beats.count }
+        return t.loudEnd ?? t.beats.count
     }
 
     /// Where the track's bass ends.
     public static func bassEndBeat(_ t: Track) -> Int {
         let nb = t.beats.count
         guard t.hasFB else { return nb }
-        let lo = Track.normLevel(t.col(0))
+        let lo = t.bassLevel
         var b = nb
         while b > nb / 2 {
             let i = max(0, b - 17)
@@ -222,8 +219,8 @@ public enum SetPlanner {
     public static func bassBoth(_ a: Track, _ g: Int, _ b: Track, _ e: Int, _ x: Int) -> Bool {
         guard a.hasFB, b.hasFB else { return true }
         let y = x - e + g
-        return meanLevel(Track.normLevel(a.col(0)), y - 16, y) >= swapBass
-            && meanLevel(Track.normLevel(b.col(0)), x, x + 16) >= swapBass
+        return meanLevel(a.bassLevel, y - 16, y) >= swapBass
+            && meanLevel(b.bassLevel, x, x + 16) >= swapBass
     }
 
     /// A phrase-aligned bass swap point in b inside the overlap: where b's bass comes in and/or
@@ -240,8 +237,8 @@ public enum SetPlanner {
             return (x, "existing")
         }
         guard b.hasFB, a.hasFB else { return (nil, "no audio analysis") }
-        let lb = Track.normLevel(b.col(0))
-        let la = Track.normLevel(a.col(0))
+        let lb = b.bassLevel
+        let la = a.bassLevel
         let mean = meanLevel
         var bestX = 0
         var bestScore = 0.0

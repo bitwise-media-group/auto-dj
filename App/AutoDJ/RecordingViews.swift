@@ -220,10 +220,12 @@ struct RecordingView: View {
                     "history",
                     rows: s.rows.map { r in
                         let t = s.tags[r.track.id]
-                        return TrackRowData(
+                        var row = TrackRowData(
                             id: "\(r.track.no)", no: r.track.no, title: r.track.title, artist: t?.artist ?? "",
                             year: t?.year ?? 0, genre: t?.genre ?? "", bpm: r.track.bpm, key: r.track.key,
                             status: app.library.status(r.track.id))
+                        row.energy = app.library.index[r.track.id].map { app.library.tracks[$0].energy } ?? nil
+                        return row
                     }, numbered: true)
             } else {
                 ProgressView("Loading the history…").frame(maxWidth: .infinity, maxHeight: .infinity)

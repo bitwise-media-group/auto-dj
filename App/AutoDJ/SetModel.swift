@@ -6,7 +6,9 @@ import Foundation
 import Observation
 
 /// One set being built: the playlist's tracks in the order being tried, the plan for that
-/// order (replanned on every edit), and the previews rendering for it.
+/// order (replanned on every edit), and the previews rendering for it. A draft is a set built
+/// around picked tracks (ADR 0021) that isn't a playlist yet: its tracks can be re-rolled or
+/// removed, and it's saved as a playlist before its cues can be written.
 @MainActor @Observable
 final class SetModel {
     let app: AppModel
@@ -62,7 +64,19 @@ final class SetModel {
 
     /// A library that isn't in master.db (the demo): nothing can be written.
     let preloaded: SetLibrary?
-    var writable: Bool { preloaded == nil }
+    var writable: Bool { preloaded == nil && draft == nil }
+
+    /// How a draft was built, and the tracks taken out of it since (never added back).
+    struct Draft {
+        var options: SetBuilder.Options
+        /// The playlist the added tracks come from (nil: the whole library), and its tracks.
+        var poolName: String?
+        var pool: Set<String>?
+        var rejected: Set<String> = []
+        var result: SetBuilder.Result?
+    }
+
+    private(set) var draft: Draft?
 
     init(app: AppModel, player: Player, playlist: String, renderer: SetRenderer, library: SetLibrary? = nil) {
         self.app = app
@@ -70,6 +84,28 @@ final class SetModel {
         self.playlist = playlist
         self.renderer = renderer
         preloaded = library
+    }
+
+    /// A draft built around options.picks, previewed at the set tempo.
+    init(app: AppModel, player: Player, draft: Draft, renderer: SetRenderer) {
+        self.app = app
+        self.player = player
+        self.playlist = "Draft set"
+        self.renderer = renderer
+        preloaded = nil
+        self.draft = draft
+        if let b = draft.options.bpm {
+            bpm = min(max((b * 10).rounded() / 10, Self.bpmRange.lowerBound), Self.bpmRange.upperBound)
+        }
+    }
+
+    /// Each track's energy (yours, else Mixed In Key's), by playlist number.
+    func energy(for no: Int) -> Energy.Level? { record(for: no).flatMap(Energy.level) }
+
+    /// Whether track no is one of the draft's picks.
+    func isPick(_ no: Int) -> Bool {
+        guard let d = draft, let t = tracks.first(where: { $0.no == no }) else { return false }
+        return d.options.picks.contains(t.id)
     }
 
     var intelligent: Bool { library?.playlist.intelligent ?? false }
@@ -92,12 +128,96 @@ final class SetModel {
         loading = true
         if let preloaded {
             library = preloaded
+        } else if var d = draft {
+            let (opts, poolName, rejected) = (d.options, d.poolName, d.rejected)
+            let built = await app.run { () -> (SetLibrary, SetBuilder.Result, Set<String>?) in
+                let (recs, cache) = try SetLibrary.loadAll(p)
+                var o = opts
+                if let pn = poolName {
+                    o.pool = Set(try RekordboxDB.readCopy(p.masterDB).sql.loadPlaylist(pn).tracks.map(\.id))
+                }
+                o.exclude.formUnion(rejected)
+                let res = try SetBuilder.build(o, recs, cache)
+                let pl = Playlist(name: name, intelligent: false, tracks: res.order)
+                return (SetLibrary(playlist: pl, recs: recs, cache: cache), res, o.pool)
+            }
+            if let (lib, res, pool) = built {
+                library = lib
+                (d.result, d.pool) = (res, pool)
+                draft = d
+                if res.slots.count < d.options.length {
+                    app.error =
+                        "Only \(res.slots.count) of \(d.options.length) tracks fit: too few tracks in the pool are "
+                        + "within the tempo range."
+                }
+            }
         } else {
             library = await app.run { try SetLibrary.load(p, playlist: name) }
         }
         tracks = library?.playlist.tracks ?? []
         loading = false
         await replan()
+    }
+
+    /// Builds the draft again from its picks, leaving out every track taken out so far.
+    func rebuild() async {
+        guard draft != nil else { return }
+        player.stop()
+        await load()
+    }
+
+    /// Swaps track no for the best other track there, keeping every other track in place. The
+    /// track taken out isn't added back, so re-rolling again goes down the candidates.
+    func reroll(_ no: Int) async {
+        guard var d = draft, let lib = library, let i = tracks.firstIndex(where: { $0.no == no }) else { return }
+        d.rejected.insert(tracks[i].id)
+        draft = d
+        var fixed: [Int: String] = [:]
+        for (k, t) in tracks.enumerated() where k != i { fixed[k] = t.id }
+        let anchors = fixed
+        let n = tracks.count
+        let bpm = d.options.bpm ?? d.result?.bpm ?? self.bpm
+        let (arc, pool, range) = (d.options.arc, d.pool, d.options.tempoRange)
+        let exclude = d.rejected.union(d.options.exclude)
+        let r = await app.run {
+            SetBuilder.refill(
+                anchors: anchors, length: n, bpm: bpm, arc: arc, pool: pool, exclude: exclude, tempoRange: range,
+                lib.recs, lib.cache)
+        }
+        guard let r else { return }
+        guard r.slots.count == n else {
+            app.error = "No other track fits there: every candidate in range is in the set or was taken out."
+            return
+        }
+        let s = r.slots[i]
+        let next = (tracks.map(\.no).max() ?? 0) + 1
+        tracks[i] = PlaylistTrack(no: next, id: s.id, title: s.title, bpm: s.bpm, key: s.key)
+        if selection == no { selection = next }
+        await replan()
+    }
+
+    /// Takes track no out of the draft (and keeps it out of rebuilds and re-rolls).
+    func remove(_ no: Int) {
+        guard var d = draft, let i = tracks.firstIndex(where: { $0.no == no }) else { return }
+        if !d.options.picks.contains(tracks[i].id) { d.rejected.insert(tracks[i].id) }
+        d.options.picks.removeAll { $0 == tracks[i].id }
+        draft = d
+        tracks.remove(at: i)
+        Task { await replan() }
+    }
+
+    /// Saves the draft as a new playlist in master.db (Rekordbox quit); true when it was.
+    func saveAsPlaylist(_ name: String, folder: String = "") async -> Bool {
+        guard draft != nil, app.canWrite() else { return false }
+        let p = app.paths
+        let ids = tracks.map(\.id)
+        let st = await app.run {
+            try PlaylistWriter.safeWrite(
+                masterDB: p.masterDB, backupDir: p.backupDir, name: name, folder: folder, contentIDs: ids)
+        }
+        guard st != nil else { return false }
+        await app.refresh()
+        return true
     }
 
     /// Plans the set for the current order and restarts the previews (segments that didn't

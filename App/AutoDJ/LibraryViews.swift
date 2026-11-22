@@ -8,8 +8,13 @@ import SwiftUI
 /// the tracks that need analysing are flagged and analysed in one go.
 struct LibraryView: View {
     @Environment(AppModel.self) private var app
+    @Environment(Player.self) private var player
     @State private var filter = ""
     @State private var needsOnly = false
+    @State private var selected: String?
+    /// The picks a set is built around (kept with the Sets section's state).
+    @Bindable var sets: SetsState
+    let openSets: () -> Void
 
     var body: some View {
         let lib = app.library
@@ -29,6 +34,15 @@ struct LibraryView: View {
             HStack(spacing: 10) {
                 AnalysisSummary(needsOnly: $needsOnly)
                 Spacer()
+                if let t = selectedTrack {
+                    let playing = player.source == .track(t.id) && player.playing
+                    Button(playing ? "Pause" : "Preview", systemImage: playing ? "pause.fill" : "play.fill") {
+                        preview(t, player)
+                    }
+                    .help("Play from the drop (Space)")
+                    Button(sets.picks.contains(t.id) ? "Unpick" : "Pick", systemImage: "pin") { togglePick(t.id) }
+                        .help("Build a set around the picked tracks (Return)")
+                }
                 TextField("Filter title, artist, genre", text: $filter)
                     .textFieldStyle(.roundedBorder)
                     .frame(maxWidth: 260)
@@ -43,12 +57,27 @@ struct LibraryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                TrackTable("library", rows: rows)
+                TrackTable(
+                    "library", rows: rows, selection: $selected,
+                    onSpace: { id in app.library.index[id].map { preview(app.library.tracks[$0], player) } },
+                    onReturn: togglePick)
             }
+            Divider()
+            PicksBar(state: sets, openSets: openSets)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task { if lib.tracks.isEmpty && !lib.loading { await app.refresh() } }
+    }
+
+    /// The selected track, while the filter shows it (the buttons act on what's visible).
+    var selectedTrack: LibraryTrack? {
+        guard let id = selected, rows.contains(where: { $0.id == id }) else { return nil }
+        return app.library.index[id].map { app.library.tracks[$0] }
+    }
+
+    func togglePick(_ id: String) {
+        if sets.picks.contains(id) { sets.picks.removeAll { $0 == id } } else { sets.picks.append(id) }
     }
 
     var rows: [TrackRowData] {
@@ -61,9 +90,11 @@ struct LibraryView: View {
             {
                 return nil
             }
-            return TrackRowData(
+            var r = TrackRowData(
                 id: t.id, title: t.title, artist: t.artist, year: t.year, genre: t.genre, bpm: t.bpm, key: t.key,
                 status: st)
+            r.energy = t.energy
+            return r
         }
     }
 }

@@ -63,7 +63,7 @@ struct ContentView: View {
             RekordboxBadge().font(.caption).padding(8)
         } detail: {
             switch section ?? .sets {
-            case .library: LibraryView()
+            case .library: LibraryView(sets: sets) { section = .sets }
             case .cues: CuePlanView(state: cuePlan)
             case .evaluate: EvaluateView()
             case .sets: SetsView(state: sets, renderer: renderer)

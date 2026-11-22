@@ -77,18 +77,26 @@ public struct SetLibrary: Sendable {
     public static func load(_ paths: Paths, playlist name: String, log: (String) -> Void = { _ in }) throws
         -> SetLibrary
     {
-        let (pl, titles): (Playlist, [(id: String, title: String)])
+        let pl: Playlist
         do {
             let rb = try RekordboxDB.readCopy(paths.masterDB)
             pl = try rb.sql.loadPlaylist(name)
-            titles = try rb.sql.titles()
         }
+        let (recs, cache) = try loadAll(paths, log: log)
+        return SetLibrary(playlist: pl, recs: recs, cache: cache)
+    }
+
+    /// Every track with Rekordbox analysis, by ID, and the transition cache with every E/G pair
+    /// in the library recorded before anything changes.
+    public static func loadAll(_ paths: Paths, log: (String) -> Void = { _ in }) throws -> (
+        recs: [String: Track], cache: TransitionCache
+    ) {
+        let titles = try RekordboxDB.readCopy(paths.masterDB).sql.titles()
         let all = try Track.build(paths, ["manual", "auto", "mik", "nohot", "other"], log: log)
         var cache = try TransitionCache.load(paths.transitions)
         cache.harvest(all, TitleResolver(titles))
         try cache.save(paths.transitions)
-        return SetLibrary(
-            playlist: pl, recs: Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }), cache: cache)
+        return (Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }), cache)
     }
 }
 

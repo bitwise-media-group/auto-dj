@@ -30,6 +30,12 @@ public struct LibraryTrack: Sendable, Equatable, Identifiable {
     /// The audio file on this machine ("" when Rekordbox has none).
     public var path: String
     public var analysis: Analysis
+    /// Stars (0 unrated).
+    public var rating = 0
+    /// The track's energy (ADR 0021), nil when neither rated nor tagged by Mixed In Key.
+    public var energy: Energy.Level?
+    /// Seconds to its DROP hot cue (slot C), where a preview starts; nil without one.
+    public var drop: Double?
 
     public init(
         id: String, title: String, artist: String = "", genre: String = "", key: String = "", year: Int = 0,
@@ -43,10 +49,15 @@ public struct LibraryTrack: Sendable, Equatable, Identifiable {
 public enum Library {
     /// Every track with its tags and analysis state. Checking the cache lists featureDir once
     /// and compares file names, so it's quick even for a large library (no file is opened).
-    public static func tracks(_ db: SQLite, featureDir: String) throws -> [LibraryTrack] {
+    public static func tracks(_ db: SQLite, featureDir: String, energyTags: [String: Int] = [:]) throws
+        -> [LibraryTrack]
+    {
         let rows = try db.query(
             """
-            select c.ID, c.Title, ar.Name, g.Name, k.ScaleName, c.ReleaseYear, c.BPM, c.FolderPath
+            select c.ID, c.Title, ar.Name, g.Name, k.ScaleName, c.ReleaseYear, c.BPM, c.FolderPath,
+                   coalesce(c.Rating, 0), coalesce(c.Commnt, ''),
+                   (select min(q.InMsec) from djmdCue q
+                     where q.ContentID = c.ID and q.Kind = 3 and q.rb_local_deleted = 0)
               from djmdContent c
               left join djmdArtist ar on ar.ID = c.ArtistID
               left join djmdGenre g on g.ID = c.GenreID
@@ -56,10 +67,14 @@ public enum Library {
         let cached = self.cached(featureDir)
         return rows.map { r in
             let path = Config.mapPath(r.string(7))
-            return LibraryTrack(
+            var t = LibraryTrack(
                 id: r.string(0), title: r.string(1), artist: r.string(2), genre: r.string(3), key: r.string(4),
                 year: r.int(5), bpm: r.double(6) / 100, path: path,
                 analysis: analysis(path, cached: cached))
+            t.rating = r.int(8)
+            t.energy = Energy.level(rating: t.rating, tag: energyTags[path], comment: r.string(9))
+            t.drop = r.optInt(10).map { Double($0) / 1000 }
+            return t
         }
     }
 
