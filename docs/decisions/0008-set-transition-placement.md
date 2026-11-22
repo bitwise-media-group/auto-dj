@@ -56,6 +56,9 @@ neither holds, you get a warning. If E is a hand-placed cue it is kept even then
 hot cue it comes from) and an existing BASS SWAP. Any of them that isn't on a phrase start gets a warning ("off-phrase …
 kept, check it"), because it may be a mistake.
 
+**2026-11-22:** hand-placed E and G (and pairs restored from the transition cache) are no longer fixed: they're where
+planning starts, and move when a nearby point does better ([0023](0023-graded-endings-and-movable-e-g.md)).
+
 ### Consequences
 
 - Good, because phrase starts and the bass swap line up across every generated transition.

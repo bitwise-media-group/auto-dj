@@ -72,7 +72,8 @@ step, the best one per last track). A track costs:
   from OUT back up to 8 phrases × the vocal share of the incoming track's 48 beats from IN), then, for the 6 best
   candidates of each beam sequence, the real plan: `SetPlanner.fit` places E and G as `set` does and costs 2 per beat of
   vocal overlap, 48 for finishing in the outgoing track's last 16 bars, and 24 when the phrases don't line up. The real
-  plans run in parallel.
+  plans run in parallel. (2026-11-22: the finish now costs `SetPlanner.endingCost`,
+  [0023](0023-graded-endings-and-movable-e-g.md).)
 
 **Arc.** Build (low to high), peak (up to the top two thirds in, then halfway back down) or flat (no arc cost), between
 the 10th and 90th percentile of the pool's energies (at least a star apart).

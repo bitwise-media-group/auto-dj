@@ -76,6 +76,10 @@ activate when played (seen in a practice set on 2026-11-15): auto-dj doesn't upd
 in `contentCue`, which the players appear to read; see [0005](0005-write-master-db-directly.md). Once it does, the loop
 can be written.
 
+**2026-11-22:** the 48 for finishing in the last 16 bars is now graded, finishing too early costs a little too, G may
+move later as well as earlier and costs 2 per phrase moved, and hand-placed or cached E/G may move like generated ones
+([0023](0023-graded-endings-and-movable-e-g.md)).
+
 ### Consequences
 
 - Good, because transitions mostly finish before the outgoing track's last 16 bars, and vocals rarely overlap.

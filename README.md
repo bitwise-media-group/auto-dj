@@ -132,8 +132,9 @@ Cloud Library Sync tracks are found under `~/Library/CloudStorage/*/rekordbox`, 
 
 You get warnings when an E/G pair doesn't line up on the phrase and letting A play to the end wouldn't start a new
 phrase in B either. You also get them when a bass swap only happens after A's bass has ended, when a track's bar grid
-disagrees with Rekordbox's phrases, or when a hand-placed E, G, OUT or BASS SWAP cue is off-phrase (kept, and the
-preview follows it).
+disagrees with Rekordbox's phrases, or when an E, G, OUT or BASS SWAP cue you placed is off-phrase and still the best
+point (kept, and the preview follows it). Your E/G cues are moved when a nearby point finishes the transition 24–40 bars
+before the outgoing track's end or avoids a vocal overlap; the report says so.
 
 Options: `plan --categories mik nohot auto` (or `mik,nohot,auto`) picks targets (see the track states below).
 `apply --only "Loleatta" "Trust Me"` limits a write. `--rb-dir` and `--work-dir` point at another library or cache.

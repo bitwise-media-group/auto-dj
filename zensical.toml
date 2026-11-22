@@ -84,6 +84,7 @@ nav = [
     { "0020 Transition endings and vocals" = "decisions/0020-transition-endings-and-vocal-overlaps.md" },
     { "0021 Building sets around picks" = "decisions/0021-build-sets-around-picked-tracks.md" },
     { "0022 The cue template on every write" = "decisions/0022-cue-template-on-every-write.md" },
+    { "0023 Graded endings, movable E/G" = "decisions/0023-graded-endings-and-movable-e-g.md" },
   ] },
 ]
 

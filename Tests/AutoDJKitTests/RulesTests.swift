@@ -163,39 +163,46 @@ import Testing
         #expect(acts[1].markers.contains(SetMarker(name: "BASS SWAP IN", beat: sw, status: .new)))
     }
 
-    @Test func keepsExistingBassSwapOffTheOutgoingPhrasing() {
+    @Test func keepsExistingBassSwapOffTheOutgoingPhrasing() throws {
         var (a, b) = T.pair(T.Options(nb: 632))
-        a.cues = [T.cue(a, 585, "OTHER", 8)]
+        a.cues = [T.cue(a, 585, "OTHER", 8)]  // off-phrase, 3 bars from the end: moved
         b.cues = [T.cue(b, 65, "SYNTHETIC", 6), T.cue(b, 97, "BASS SWAP", 0)]
         let acts = T.plan(a, b)
-        #expect(acts[0].g?.beat == 585 && acts[1].e?.beat == 65)
+        let g = try #require(acts[0].g?.beat)
+        let e = try #require(acts[1].e?.beat)
+        #expect(g < 585 && (585 - g) % 16 == 0)
         #expect(acts[1].bassSwap == BassSwap(beat: 97, why: "existing") && acts[1].swap == 97)
         #expect(acts[1].markers.contains(SetMarker(name: "BASS SWAP IN", beat: 97, status: .rename)))
-        #expect(acts[0].markers.contains(SetMarker(name: "BASS SWAP OUT", beat: 617, status: .new)))
-        #expect(
-            acts[0].warnings.contains("G 'OTHER' at beat 585 is off-phrase (8 beats into a phrase); kept, check it"))
-        #expect(
-            acts[1].warnings.contains {
-                $0.contains("BASS SWAP at beat 97 is off-phrase in Synthetic (Extended Mix) (8 beats")
-            })
-        #expect(!acts[1].warnings.contains { $0.contains("E 'SYNTHETIC'") })
+        #expect(acts[0].markers.contains(SetMarker(name: "BASS SWAP OUT", beat: g + 97 - e, status: .new)))
+        // E moved with G, so the swap lands on the outgoing track's phrase too
+        #expect(!acts[1].warnings.contains { $0.contains("BASS SWAP at beat 97 is off-phrase") })
     }
 
-    @Test func keepsHandPlacedEOffThePhrase() {
+    @Test func keepsAHandPlacedGWhereItWorks() {
         var (a, b) = T.pair()
-        a.cues = [T.cue(a, 577, "OTHER", 8)]
-        b.cues = [T.cue(b, 73, "SYNTHETIC", 6)]
+        a.cues = [T.cue(a, 505, "OTHER", 8)]  // off-phrase, but the transition finishes ~25 bars from the end
+        b.cues = [T.cue(b, 65, "IN", 1)]
         let acts = T.plan(a, b)
-        #expect(acts[1].e == Slot(name: "SYNTHETIC", beat: 73, status: .existing))
+        #expect(acts[0].g == Slot(name: "OTHER", beat: 505, status: .existing))
         #expect(
-            acts[1].warnings.contains("E 'SYNTHETIC' at beat 73 is off-phrase (8 beats into a phrase); kept, check it"))
-        #expect(acts[1].warnings.contains { $0.contains("E at beat 73 is 8 beats off G's phrase position; kept") })
-        #expect(!acts[0].warnings.contains { $0.contains("off-phrase") })
+            acts[0].warnings.contains("G 'OTHER' at beat 505 is off-phrase (8 beats into a phrase); kept, check it"))
+        #expect(!acts[1].warnings.contains { $0.contains("G moved") })
+    }
+
+    @Test func movesAHandPlacedEOntoThePhrase() {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 513, "OTHER", 8)]
+        b.cues = [T.cue(b, 73, "SYNTHETIC", 6)]  // 8 beats off G's phrase position
+        let acts = T.plan(a, b)
+        #expect(
+            acts[1].e == Slot(name: "SYNTHETIC", beat: 49, status: .replace, old: .init(name: "SYNTHETIC", beat: 73)))
+        #expect(acts[1].warnings.contains { $0.contains("E moved from E 'SYNTHETIC' (beat 73 -> 49)") })
+        #expect(!acts[1].warnings.contains { $0.contains("off-phrase") })
     }
 
     @Test func removesStaleCutOutsAndDuplicateJumps() {
         var (a, b) = T.pair()
-        a.cues = [T.cue(a, 577, "OTHER", 8)]  // a hand-placed G: the CUT cues added below don't move it
+        a.cues = [T.cue(a, 513, "OTHER", 8)]  // a G where it finishes well: the CUT cues added below don't move it
         b.cues = [T.cue(b, 65, "IN", 1)]
         let g = T.plan(a, b)[0].g!.beat
         a.cues += [
@@ -223,7 +230,14 @@ import Testing
         #expect(acts[0].remove.contains(.init(name: "CUT OUT", beat: g + 16, why: "no CUT IN on the next track there")))
     }
 
-    // ADR 0020: finish before the outgoing track's last 16 bars, avoid vocal overlaps
+    // ADR 0020, 0023: finish 24-40 bars before the outgoing track's end, avoid vocal overlaps
+
+    @Test func endingCost() {
+        let c = SetPlanner.endingCost(barsLeft:)
+        #expect(c(24) == 0 && c(32) == 0 && c(40) == 0)
+        #expect(c(20) == 8 && c(16) == 16 && c(8) == 48 && c(0) == 80 && c(-2) == 80)  // later: steeper
+        #expect(c(48) == 8 && c(56) == 16)  // earlier: half as steep
+    }
 
     /// Vocal confidence 1 on beats in ranges (1-based, half-open), 0 elsewhere.
     func vocals(_ t: Track, _ ranges: [Range<Int>]) -> [Double] {
@@ -239,19 +253,27 @@ import Testing
         let e = try #require(acts[1].e?.beat)
         #expect(g < 577 && (577 - g) % 16 == 0)
         let end = SetPlanner.leaveBeat(a, g, b, e, swap: acts[1].swap)
-        #expect(end <= SetPlanner.lastAudioBeat(a) - SetPlanner.lateBeats)
-        #expect(acts[1].warnings.contains { $0.contains("G moved") && $0.contains("finishes before the last 16 bars") })
+        #expect(SetPlanner.bestEnding.contains(Double(SetPlanner.lastAudioBeat(a) - end) / 4))
+        #expect(
+            acts[1].warnings.contains { $0.contains("G moved 16 bars earlier") && $0.contains("bars before the end") })
     }
 
-    @Test func movesAnEarlierRunsGOnOut() {
+    @Test func movesGLaterSoTheTrackIsntCutShort() {
         var (a, b) = T.pair()
-        // G on the OUT hot cue: written by the earlier rule (G = OUT), so it may move
-        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 577, "OTHER", 8)]
+        a.cues = [T.cue(a, 385, "OUT", 5)]  // finishing ~57 bars before the end
         b.cues = [T.cue(b, 65, "IN", 1)]
         let acts = T.plan(a, b)
-        #expect((acts[0].g?.beat ?? 0) < 577 && acts[0].g?.status == .replace && acts[0].g?.name == "OTHER")
-        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 593, "OTHER", 8)]  // elsewhere: hand-placed, kept
-        #expect(T.plan(a, b)[0].g == Slot(name: "OTHER", beat: 593, status: .existing))
+        #expect(acts[0].g?.beat == 449)
+        #expect(acts[1].warnings.contains { $0.contains("G moved 16 bars later (beat 385 -> 449)") })
+    }
+
+    @Test func movesTheDJsOwnGToo() {
+        var (a, b) = T.pair()
+        a.cues = [T.cue(a, 577, "OUT", 5), T.cue(a, 593, "OTHER", 8)]  // the pair's own G, 5 bars from the end
+        b.cues = [T.cue(b, 65, "IN", 1)]
+        let acts = T.plan(a, b)
+        #expect(acts[0].g == Slot(name: "OTHER", beat: 513, status: .replace, old: .init(name: "OTHER", beat: 593)))
+        #expect(acts[1].warnings.contains { $0.contains("G moved 20 bars earlier than G 'OTHER' (beat 593 -> 513)") })
     }
 
     @Test func keepsGAtTheEndWhenNothingEarlierWorks() {
@@ -288,24 +310,26 @@ import Testing
         #expect((acts[1].vocalOverlap ?? 0) >= 8)
         #expect(
             acts[1].warnings.contains { $0.hasPrefix("vocal overlap:") && $0.contains("no nearby transition point") })
-        var hand = (a, b)  // hand-placed E and G: kept, still flagged
+        var hand = (a, b)  // the pair's own E and G: no better point either, flagged the same way
         hand.0.cues = [T.cue(a, 513, "OTHER", 8)]
         hand.1.cues = [T.cue(b, 65, "SYNTHETIC", 6)]
         let kept = T.plan(hand.0, hand.1)
-        #expect(kept[0].g?.beat == 513 && kept[1].e?.beat == 65)
-        #expect(kept[1].warnings.contains { $0.contains("E and G are hand-placed; kept") })
+        #expect((kept[1].vocalOverlap ?? 0) >= 8)
+        #expect(
+            kept[1].warnings.contains { $0.hasPrefix("vocal overlap:") && $0.contains("no nearby transition point") })
     }
 
     @Test func suggestsAVocalFreeLoopWhenTheOverlapStays() throws {
         var (a, b) = T.pair()
-        a.cues = [T.cue(a, 513, "OTHER", 8)]  // hand-placed: the overlap stays
-        b.cues = [T.cue(b, 65, "SYNTHETIC", 6)]
-        a.vocals = vocals(a, [1..<449, 545..<641])  // 449-544 is vocal-free, so A can loop there
+        // G can't go before the DROP + 8 bars (529), where A sings again: the overlap stays
+        a.cues = [T.cue(a, 577, "OTHER", 8), T.cue(a, 497, "DROP", 3)]
+        a.vocals = vocals(a, [1..<465, 529..<641])  // 465-528 is vocal-free, so A can loop there
         b.vocals = vocals(b, [1..<641])
         let acts = T.plan(a, b)
+        #expect(acts[0].g?.beat == 529)
         let loop = try #require(acts[1].vocalLoop)
-        #expect(loop == SetAction.Loop(beat: 481, beats: 64))  // 16 bars, ending where A's vocals start
-        #expect(acts[1].warnings.contains { $0.contains("loop Synthetic (Extended Mix)'s beats 481-544 (16 bars") })
+        #expect(loop == SetAction.Loop(beat: 465, beats: 64))  // 16 bars, ending where A's vocals start
+        #expect(acts[1].warnings.contains { $0.contains("loop Synthetic (Extended Mix)'s beats 465-528 (16 bars") })
         a.vocals = vocals(a, [1..<641])
         #expect(T.plan(a, b)[1].vocalLoop == nil)
         #expect(T.plan(a, b)[1].warnings.contains { $0.contains("no vocal-free 4-bar stretch") })

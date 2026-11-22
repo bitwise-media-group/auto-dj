@@ -286,7 +286,7 @@ public enum SetBuilder {
                 return r.isEmpty ? 0 : Double(r.filter { SetPlanner.vocal(t, $0) }.count) / Double(r.count)
             }
             var out = 1.0
-            for k in 0...SetPlanner.earlierPhrases {
+            for k in 0...SetPlanner.movePhrases {
                 let g = outB - SetPlanner.phrase * k
                 if g < t.beats.count / 2 && k > 0 { break }
                 out = min(out, frac(g))
@@ -478,16 +478,18 @@ enum SetsFormat {
 }
 
 extension SetPlanner {
-    /// How a transition a -> b works out as `set` plans it (ADR 0020): beats of vocal overlap,
-    /// whether it finishes in a's last 16 bars, whether it lines up on the phrase.
+    /// How a transition a -> b works out as `set` plans it (ADR 0020, 0023): beats of vocal
+    /// overlap, where a leaves the mix (`endingCost`; late = in its last 16 bars), whether it
+    /// lines up on the phrase.
     public struct Fit: Sendable, Equatable {
         public var vocalBeats: Int
         public var late: Bool
+        public var ending: Double
         public var aligned: Bool
 
-        /// The planner's own cost (2 per overlapping beat, 48 for a late ending), plus 24 when
-        /// the phrases don't line up.
-        public var cost: Double { 2 * Double(vocalBeats) + (late ? 48 : 0) + (aligned ? 0 : 24) }
+        /// The planner's own cost (2 per overlapping beat, the ending's), plus 24 when the
+        /// phrases don't line up.
+        public var cost: Double { 2 * Double(vocalBeats) + ending + (aligned ? 0 : 24) }
     }
 
     /// Plans E and G for a -> b alone and reports how it works out.
@@ -498,10 +500,10 @@ extension SetPlanner {
         var tr = Transition(i: 0, x: x, nxt: y, t: a, u: b, cached: cache.get(a.id, b.id) ?? TransitionCache.Entry())
         tr.chooseG(&out)
         tr.chooseE(&out)
-        tr.earlierG()
+        tr.moveG()
         let end = leaveBeat(a, tr.g, b, tr.e, swap: tr.swapAt(tr.g, tr.e))
         return Fit(
             vocalBeats: vocalOverlap(a, tr.g, b, tr.e, until: end).beats, late: end > lastAudioBeat(a) - lateBeats,
-            aligned: tr.al.phraseAligned || tr.al.endsOnPhrase)
+            ending: endingCost(a, end), aligned: tr.al.phraseAligned || tr.al.endsOnPhrase)
     }
 }

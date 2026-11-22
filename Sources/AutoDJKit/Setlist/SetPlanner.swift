@@ -308,11 +308,37 @@ public enum SetPlanner {
     }
 
     /// A transition finishing within this many beats of the outgoing track's end (its last
-    /// 16 bars) is avoided when an earlier G does better.
+    /// 16 bars) is late: reported, and costs the most (`endingCost`).
     public static let lateBeats = 64
 
-    /// How far before the outgoing OUT G may move (in phrases) to finish earlier or avoid vocals.
-    static let earlierPhrases = 8
+    /// Where a transition should finish, in bars before the outgoing track's last audible beat
+    /// (ADR 0023): anywhere in this range costs nothing.
+    public static let bestEnding = 24.0...40.0
+
+    /// What finishing barsLeft bars before the outgoing track's last audible beat costs (ADR
+    /// 0023): 2 per bar closer than 24 bars, 4 per bar inside the last 16 (16 at 16 bars, 80
+    /// at the end), so tracks aren't played to the end; and, to a lesser degree, 1 per bar
+    /// earlier than 40 bars, so they aren't cut short either.
+    public static func endingCost(barsLeft l: Double) -> Double {
+        let late = Double(lateBeats) / 4
+        if l < late { return 2 * (bestEnding.lowerBound - late) + 4 * (late - max(l, 0)) }
+        if l < bestEnding.lowerBound { return 2 * (bestEnding.lowerBound - l) }
+        return max(l - bestEnding.upperBound, 0)
+    }
+
+    /// What a leaving the mix at its beat `end` costs (`endingCost`).
+    public static func endingCost(_ a: Track, _ end: Int) -> Double {
+        endingCost(barsLeft: Double(lastAudioBeat(a) - end) / 4)
+    }
+
+    /// How far G may move (in phrases, either way) from where it starts to finish better or
+    /// avoid vocals.
+    static let movePhrases = 8
+
+    /// What moving G / E a phrase from where it starts costs: a mild preference for OUT / IN or
+    /// the DJ's own cue (ADR 0023); where the transition finishes decides.
+    static let gMoveCost = 2.0
+    static let eMoveCost = 4.0
 
     /// The beat of a where it has left the mix (as the previews mix it): its FILTER exit plus the
     /// sweep and fade, its CUT, else 8 beats after the bass swap, else 40 beats after G.
@@ -514,9 +540,12 @@ public enum SetPlanner {
         var g = 0
         var e = 0
         var al = Alignment(phraseAligned: false, endsOnPhrase: false, offset: 0)
-        /// G and E are hand-placed (or restored from the cache): never moved.
-        var gFixed = false
-        var eFixed = false
+        /// Where G and E start (the pair's own cue, else the cache, else OUT / IN) and where
+        /// that came from ("" for OUT / IN). Any of them may move (ADR 0023).
+        var gStart = 0
+        var eStart = 0
+        var gFrom = ""
+        var eFrom = ""
 
         init(i: Int, x: PlaylistTrack, nxt: PlaylistTrack, t: Track, u: Track, cached: TransitionCache.Entry) {
             (self.i, self.x, self.nxt, self.t, self.u, self.cached) = (i, x, nxt, t, u, cached)
@@ -535,7 +564,7 @@ public enum SetPlanner {
         mutating func plan(_ out: inout [SetAction]) {
             chooseG(&out)
             chooseE(&out)
-            earlierG()
+            moveG()
             slots(&out)
             markers(&out)
             vocals(&out)
@@ -548,50 +577,57 @@ public enum SetPlanner {
             return why.firstMatch(of: /on a drop \(beat (\d+)\)/).flatMap { Int($0.1) }
         }
 
-        /// What transition (g, e) costs (ADR 0020): beats of vocal overlap, finishing in t's last
-        /// 16 bars (allowed when nothing nearby avoids it), and moving G or E from where the cue
-        /// rules put them (OUT, IN).
+        /// What transition (g, e) costs (ADR 0020, 0023): beats of vocal overlap, where t leaves
+        /// the mix (`endingCost`), and moving G or E from where they start.
         func cost(_ g: Int, _ e: Int, g0: Int, e0: Int) -> Double {
             let end = leaveBeat(t, g, u, e, swap: swapAt(g, e))
             let vox = Double(vocalOverlap(t, g, u, e, until: end).beats)
-            let late = end > lastAudioBeat(t) - lateBeats ? 48.0 : 0
-            return 2 * vox + late + 6 * Double(max(g0 - g, 0)) / 16 + 4 * Double(max(e0 - e, 0)) / 16
+            return 2 * vox + endingCost(t, end) + gMoveCost * Double(abs(g0 - g)) / Double(phrase)
+                + eMoveCost * Double(abs(e0 - e)) / Double(phrase)
         }
 
-        /// Tries G up to 8 phrases before OUT (same phrase position, not before A's DROP hot cue)
-        /// when that finishes the transition before A's last 16 bars or with less vocal overlap.
-        mutating func earlierG() {
-            guard !gFixed, al.phraseAligned || al.endsOnPhrase else { return }
+        /// Tries G up to 8 phrases either side of where it starts, and of the OUT hot cue (not
+        /// before A's DROP hot cue + 8 bars nor its first half), when that finishes the
+        /// transition nearer `bestEnding` or with less vocal overlap.
+        mutating func moveG() {
+            guard al.phraseAligned || al.endsOnPhrase else { return }
             let (g0, e0) = (g, e)
-            let eIn = inOf { e0 }
             let lowest = max(hot[3].map { beatOf(t, $0.t) + 32 } ?? 0, t.beats.count / 2)
-            var best = (g: g0, e: e0, cost: cost(g0, e0, g0: g0, e0: eIn))
+            let highest = lastAudioBeat(t) - phrase
+            var best = (g: g0, e: e0, cost: cost(g0, e0, g0: gStart, e0: eStart))
             let me = self
-            for k in 1...earlierPhrases {
-                let gc = g0 - phrase * k
-                if gc < lowest { break }
-                let ec =
-                    eFixed
-                    ? e0
-                    : SetPlanner.chooseE(t, gc, u, eIn, drops, bss) { me.cost(gc, $0, g0: g0, e0: eIn) }
-                let a = align(t, gc, u, ec)
-                guard a.phraseAligned || a.endsOnPhrase else { continue }
-                let c = cost(gc, ec, g0: g0, e0: eIn)
-                if c < best.cost - 1e-9 { best = (gc, ec, c) }
+            var tried: Set<Int> = [g0]
+            let starts = [g0] + (hot[5].map { [beatOf(t, $0.t)] } ?? [])
+            for s in starts {
+                for k in -SetPlanner.movePhrases...SetPlanner.movePhrases {
+                    let gc = s + phrase * k
+                    guard gc >= lowest, gc <= highest, tried.insert(gc).inserted else { continue }
+                    let ec = SetPlanner.chooseE(t, gc, u, eStart, drops, bss) {
+                        me.cost(gc, $0, g0: me.gStart, e0: me.eStart)
+                    }
+                    let a = align(t, gc, u, ec)
+                    guard a.phraseAligned || a.endsOnPhrase else { continue }
+                    let c = cost(gc, ec, g0: gStart, e0: eStart)
+                    if c < best.cost - 1e-9 { best = (gc, ec, c) }
+                }
             }
             guard best.g != g0 else { return }
             let before = leaveBeat(t, g0, u, e0, swap: swapAt(g0, e0))
             let after = leaveBeat(t, best.g, u, best.e, swap: swapAt(best.g, best.e))
             var why: [String] = []
             let last = lastAudioBeat(t)
-            if before > last - lateBeats && after <= last - lateBeats { why.append("finishes before the last 16 bars") }
+            if before != after {
+                why.append("finishes \((last - after) / 4) bars before the end (was \((last - before) / 4))")
+            }
             let vb = vocalOverlap(t, g0, u, e0, until: before).beats
             let va = vocalOverlap(t, best.g, u, best.e, until: after).beats
             if va < vb { why.append(va == 0 ? "no vocal overlap" : "less vocal overlap (\(vb / 4) -> \(va / 4) bars)") }
             (g, e) = (best.g, best.e)
             al = align(t, g, u, e)
+            let bars = abs(g0 - g) / 4
+            let src = gFrom.isEmpty ? "" : " than \(gFrom)"
             note.append(
-                "G moved \((g0 - g) / 4) bars before OUT (beat \(g0) -> \(g))"
+                "G moved \(bars) bars \(g < g0 ? "earlier" : "later")\(src) (beat \(g0) -> \(g))"
                     + (why.isEmpty ? "" : ": " + why.joined(separator: ", ")))
         }
 
@@ -601,9 +637,7 @@ public enum SetPlanner {
             let (n, from) = vocalOverlap(t, g, u, e, until: end)
             guard n >= 8, let from else { return }
             out[i + 1].vocalOverlap = n
-            let why =
-                gFixed && eFixed
-                ? "E and G are hand-placed; kept" : "no nearby transition point avoids it"
+            let why = "no nearby transition point avoids it"
             let loop = vocalLoop(t, g, clash: from)
             out[i + 1].vocalLoop = loop
             let hint =
@@ -616,60 +650,39 @@ public enum SetPlanner {
                     + "(from \(x.title)'s beat \(from)); \(why)\(hint)")
         }
 
-        /// G: the pair's own G (in place, else cached), else the outgoing OUT.
+        /// G's start: the pair's own G (in place, else cached), else the outgoing OUT. It may
+        /// still move (`moveG`).
         mutating func chooseG(_ out: inout [SetAction]) {
-            var gSrc = ""  // the hand-placed cue G follows, if any
             if gMatch, let gc = gCur {
-                (g, gSrc) = (gc.beat, "G '\(gc.name)'")
-                // a G right on the OUT hot cue is what the earlier rule wrote (G = OUT), so it may
-                // move like a generated one (ADR 0020); anywhere else it was placed by hand
-                gFixed = hot[5].map { beatOf(t, $0.t) } != gc.beat
+                (g, gFrom) = (gc.beat, "G '\(gc.name)'")
             } else if let gms = cached.gMS {
-                g = beatOf(t, Double(gms) / 1000)
-                gFixed = true
-                note.append("G restored from the transition cache")
+                (g, gFrom) = (beatOf(t, Double(gms) / 1000), "the transition cache")
             } else if let d = hot[5] {
-                (g, gSrc) = (beatOf(t, d.t), "OUT hot cue '\(d.name)'")
+                g = beatOf(t, d.t)
             } else {
                 g = CueRules.hotCues(t, .default)["OUT"]!
             }
-            let off = offPhrase(t, g)
-            if !gSrc.isEmpty && !off.isEmpty {
-                out[i].warnings.append("\(gSrc) at beat \(g) is off-phrase (\(off)); kept, check it")
-            }
+            gStart = g
         }
 
         func inOf(_ fallback: () -> Int) -> Int { uhot[1].map { beatOf(u, $0.t) } ?? fallback() }
 
-        /// E: the pair's own E (in place, else cached), else computed; a computed E off G's phrase
-        /// position is moved, a hand-placed one only flagged.
+        /// E: from where it starts (the pair's own E, else cached, else IN), the nearest beat
+        /// with G's phrase position where a bass swap fits, by the same cost.
         mutating func chooseE(_ out: inout [SetAction]) {
             if eMatch, let ec = eCur {
-                e = ec.beat
-                eFixed = true
+                (eStart, eFrom) = (ec.beat, "E '\(ec.name)'")
             } else if let ems = cached.eMS {
-                e = beatOf(u, Double(ems) / 1000)
-                eFixed = true
-                note.append("E restored from the transition cache")
+                (eStart, eFrom) = (beatOf(u, Double(ems) / 1000), "the transition cache")
             } else {
                 let u = self.u
-                let g = self.g
-                let e0 = inOf { CueRules.hotCues(u, .default)["IN"]! }
-                let me = self
-                e = SetPlanner.chooseE(t, g, u, e0, drops, bss) { me.cost(g, $0, g0: g, e0: e0) }
+                eStart = inOf { CueRules.hotCues(u, .default)["IN"]! }
             }
+            let g = self.g
+            let me = self
+            e = SetPlanner.chooseE(t, g, u, eStart, drops, bss) { me.cost(g, $0, g0: me.gStart, e0: me.eStart) }
             al = align(t, g, u, e)
-            let off = offPhrase(u, e)
-            if eMatch, !off.isEmpty, let ec = eCur {
-                out[i + 1].warnings.append("E '\(ec.name)' at beat \(e) is off-phrase (\(off)); kept, check it")
-            }
             if al.phraseAligned || al.endsOnPhrase { return }
-            if eMatch {  // hand-placed: kept, never moved
-                note.append(
-                    "E at beat \(e) is \(min(al.offset, phrase - al.offset)) beats off G's phrase position; kept, check it"
-                )
-                return
-            }
             let oldE = e
             let offset = al.offset
             e = SetPlanner.chooseE(t, g, u, inOf { oldE }, drops, bss)
@@ -677,6 +690,33 @@ public enum SetPlanner {
             note.append(
                 "E at beat \(oldE) was \(min(offset, phrase - offset)) beats off the phrase; fixed to beat \(e)")
             if !al.phraseAligned && !al.endsOnPhrase { note.append("still not phrase-aligned; check the beat grids") }
+        }
+
+        /// Notes where G and E ended up against an existing cue they started from, and flags
+        /// one kept off the phrase.
+        func origins(_ out: inout [SetAction]) -> [String] {
+            var n: [String] = []
+            for (name, from, start, now, track, who) in [
+                ("G", gFrom, gStart, g, t, i), ("E", eFrom, eStart, e, u, i + 1),
+            ] where !from.isEmpty {
+                if now != start {
+                    if name == "E" { n.append("E moved from \(from) (beat \(start) -> \(now))") }  // G: moveG's note
+                    continue
+                }
+                if from == "the transition cache" { n.append("\(name) restored from the transition cache") }
+                let off = offPhrase(track, now)
+                if !off.isEmpty {
+                    out[who].warnings.append("\(from) at beat \(now) is off-phrase (\(off)); kept, check it")
+                }
+            }
+            if gFrom.isEmpty, let d = hot[5], beatOf(t, d.t) == g {
+                let off = offPhrase(t, g)
+                if !off.isEmpty {
+                    out[i].warnings.append(
+                        "OUT hot cue '\(d.name)' at beat \(g) is off-phrase (\(off)); kept, check it")
+                }
+            }
+            return n
         }
 
         /// Decides the G and E slots and reports the notes.
@@ -692,7 +732,7 @@ public enum SetPlanner {
                         "\(slot) '\(old.name)' (another set) replaced; saved in the transition cache")
                 }
             }
-            for n in note { out[i + 1].warnings.append("\(x.title) -> \(nxt.title): \(n)") }
+            for n in origins(&out) + note { out[i + 1].warnings.append("\(x.title) -> \(nxt.title): \(n)") }
         }
 
         /// Places the bass swap and the BASS SWAP / exit / SYNC markers on both tracks.

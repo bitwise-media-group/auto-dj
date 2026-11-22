@@ -24,10 +24,13 @@ Prepares a playlist as a set:
    [Set cues](../cues/set-cues.md). Each line says what would happen: `existing` (kept as is), `new` (empty slot),
    `rename` (an existing cue gets its set name), `replace` (overwritten; the old cue is saved in the transition cache)
    or `clear` (removed from the last track).
-4. **Endings and vocals.** Unless G is hand-placed, it may move up to 8 phrases before the outgoing OUT so the
-   transition finishes before the outgoing track's last 16 bars and the two tracks' vocals don't overlap. An overlap
-   that can't be avoided is a warning, like a key clash, with a vocal-free 4, 8 or 16-bar loop in the outgoing track to
-   hold it ([ADR 0020](../decisions/0020-transition-endings-and-vocal-overlaps.md)).
+4. **Endings and vocals.** G starts at the pair's own G (else the transition cache, else the outgoing OUT) and may move
+   up to 8 phrases either way, E with it, so the transition finishes 24–40 bars before the outgoing track's end (later
+   costs more the closer it gets to the end, earlier a little) and the two tracks' vocals don't overlap. Your own E/G
+   are moved too when that does better: they were placed for another set. An overlap that can't be avoided is a warning,
+   like a key clash, with a vocal-free 4, 8 or 16-bar loop in the outgoing track to hold it (ADRs
+   [0020](../decisions/0020-transition-endings-and-vocal-overlaps.md),
+   [0023](../decisions/0023-graded-endings-and-movable-e-g.md)).
 
 Tracks with no auto-dj cues yet (`mik`, `nohot`: just imported, say) are planned with the cue template, and `--write`
 writes it on them first, as `apply --write` would, so E and G line up with their new IN and OUT. The report lists them
