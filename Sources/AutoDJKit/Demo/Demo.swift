@@ -246,19 +246,6 @@ public enum Demo {
         tracks.map { PlaylistTrack(no: $0.no, id: String($0.no), title: $0.title, bpm: $0.song.bpm, key: $0.key) }
     }
 
-    /// A plan item as the cues `apply --write` leaves on the track.
-    static func cuesOf(_ it: CuePlan.Item) -> [Cue] {
-        it.hot.map { h in
-            var c = Cue(kind: h.kind, t: Double(h.ms) / 1000, name: h.name)
-            if let loop = h.loop, let out = h.outMS {
-                c.out = Double(out) / 1000
-                c.activeLoop = 1
-                c.beatLoopSize = loop << 16 + 1
-            }
-            return c
-        } + it.mem.map { Cue(kind: 0, t: Double($0.ms) / 1000, name: $0.name) }
-    }
-
     /// The demo set ready to plan: rendered, analysed, its features extracted, and cued by the
     /// plan as `apply --write` would (Rekordbox's analysis is replaced by the generator's own
     /// grid and phrases). The returned plan items are what `plan` printed.
@@ -281,7 +268,7 @@ public enum Demo {
         }
         let items = CuePlan.make(ts, ["nohot"], .default)  // freshly analysed tracks have no hot cues
         for i in ts.indices {  // apply --write: the planned cues land on the tracks, which become "auto"
-            ts[i].cues = cuesOf(items[i])
+            ts[i].cues = CueTemplate.cues(items[i])
             ts[i].category = "auto"
         }
         return (Dictionary(uniqueKeysWithValues: ts.map { ($0.id, $0) }), items)

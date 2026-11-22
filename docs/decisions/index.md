@@ -27,6 +27,7 @@ are written.
 | [0019](0019-render-previews-in-process.md)            | Render set previews in-process, in parallel, streamed to playback   | 2026-11-14 |
 | [0020](0020-transition-endings-and-vocal-overlaps.md) | Finish transitions before the last 16 bars and avoid vocal overlaps | 2026-11-15 |
 | [0021](0021-build-sets-around-picked-tracks.md)       | Build sets around picked tracks, by key, tempo, vocals and energy   | 2026-11-21 |
+| [0022](0022-cue-template-on-every-write.md)           | Write the cue template on every track a write touches               | 2026-11-22 |
 
 ## Adding a record
 

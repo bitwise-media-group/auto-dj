@@ -62,9 +62,7 @@ struct BuildCmd: AsyncParsableCommand {
             return
         }
         print(
-            try PlaylistWriter.safeWrite(
-                masterDB: p.masterDB, backupDir: p.backupDir, name: name, folder: folder,
-                contentIDs: res.slots.map(\.id)))
+            try PlaylistWriter.safeWrite(p, name: name, folder: folder, contentIDs: res.slots.map(\.id), recs: recs))
         print("Saved. Next: auto-dj set \"\(name)\"")
     }
 

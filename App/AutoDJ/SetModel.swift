@@ -211,9 +211,9 @@ final class SetModel {
         guard draft != nil, app.canWrite() else { return false }
         let p = app.paths
         let ids = tracks.map(\.id)
+        let recs = library?.recs ?? [:]
         let st = await app.run {
-            try PlaylistWriter.safeWrite(
-                masterDB: p.masterDB, backupDir: p.backupDir, name: name, folder: folder, contentIDs: ids)
+            try PlaylistWriter.safeWrite(p, name: name, folder: folder, contentIDs: ids, recs: recs)
         }
         guard st != nil else { return false }
         await app.refresh()

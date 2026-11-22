@@ -60,6 +60,9 @@ public struct SetResult: Sendable {
     /// An intelligent playlist: Rekordbox picks and orders its tracks, so the order can't be
     /// saved to it.
     public var intelligent = false
+    /// The cue template for the set's tracks that are missing it, written first (ADR 0022);
+    /// `recs` already holds them with it.
+    public var template: [CuePlan.Item] = []
 }
 
 /// What a set needs from the library, loaded once and replanned on every edit.
@@ -117,10 +120,14 @@ public enum SetRun {
 
     /// `run` without the library: the key check, suggested order and set cues for the tracks in
     /// order, with recs holding every track's record. The app, the CLI and the demo share it.
+    /// Tracks missing the cue template are planned with it, as they will be once written.
     public static func plan(
         _ playlist: String, _ tracks: [PlaylistTrack], _ recs: [String: Track], _ cache: TransitionCache,
         order spec: SetOrder, freeStart: Bool
     ) throws -> SetResult {
+        let template = CueTemplate.missing(tracks.map(\.id), recs)
+        var recs = recs
+        for it in template { recs[it.id] = CueTemplate.overlay(recs[it.id]!, it) }
         var order = tracks
         if case .numbers(let n) = spec { order = try pick(tracks, n) }
         let checks = Keys.checkOrder(order)
@@ -138,6 +145,7 @@ public enum SetRun {
         }
         if spec == .suggested { order = suggested.map { order[$0] } }
         let acts = SetPlanner.plan(order, recs, cache)
+        if let t = CueTemplate.report(template) { lines += ["", t] }
         lines += [
             "",
             "Set cues (beat @ m:ss; existing = kept as is, new = empty slot, replace = slot overwritten (old cue saved "
@@ -152,10 +160,12 @@ public enum SetRun {
                     + "hold the outgoing track.",
             ]
         }
-        return SetResult(
+        var res = SetResult(
             playlist: playlist, report: lines.joined(separator: "\n"), order: order, actions: acts, recs: recs,
             clashes: clashes, keyChecks: Keys.checkOrder(order), suggested: suggested, suggestedCost: cost, cache: cache
         )
+        res.template = template
+        return res
     }
 
     /// Reorders the tracks by 1-based track numbers.
@@ -251,13 +261,14 @@ public enum SetRun {
         }
     }
 
-    /// Writes the set's cues (and, with reorder, the playlist order) to master.db.
+    /// Writes the set's cues (and, with reorder, the playlist order) to master.db, after the cue
+    /// template on the tracks missing it.
     public static func write(_ paths: Paths, _ res: inout SetResult, reorder: Bool) throws -> Stats {
         let beats = res.recs.mapValues(\.beats)
         let acts = SetPlanner.toDB(res.actions)
         let ids = res.order.map(\.id)
         let playlist = res.playlist
-        let stats = try SafeWrite.write(paths.masterDB, backupDir: paths.backupDir) { db in
+        let stats = try SafeWrite.write(paths, template: res.template) { db in
             let st = try CueWriter.applySet(db, acts, beats: beats)
             if reorder { st.update(try CueWriter.reorderPlaylist(db, playlist, ids)) }
             return st

@@ -123,7 +123,9 @@ import Testing
         let d = try db(
             c("1", "10", 1, 1000, "Energy 5", -1) + c("2", "10", 0, 64000, "DROP", 4)
                 + c("3", "10", 0, 2000, "CUE(Auto)", 0)
-                + c("4", "11", 1, 1000, "Energy 5", -1) + c("5", "11", 6, 9000, "ARIA", -1))  // 11: a hand-made E
+                + c("4", "11", 1, 1000, "Energy 5", -1) + c("5", "11", 6, 9000, "ARIA", -1)  // 11: an E (set owns it)
+                + c("6", "12", 1, 1000, "Energy 5", -1)  // 12 is rated
+                + "insert into djmdContent values ('13', 'uuid-13', 0, 0);" + c("7", "13", 7, 9000, "MY JUMP", -1))
         let plan = [
             PlanTrack(
                 id: "10", title: "Ten",
@@ -133,11 +135,13 @@ import Testing
                 ],
                 mem: [PlanMem(name: "START", ms: 0), PlanMem(name: "DROP", ms: 64200)]),
             PlanTrack(id: "11", title: "Eleven", hot: [PlanHot(kind: 1, name: "IN", ms: 15000)], mem: []),
+            PlanTrack(id: "12", title: "Rated", hot: [PlanHot(kind: 1, name: "IN", ms: 15000)], mem: []),
+            PlanTrack(id: "13", title: "Hand F", hot: [PlanHot(kind: 1, name: "IN", ms: 15000)], mem: []),
             PlanTrack(id: "99", title: "Gone", hot: [], mem: []),
         ]
-        let st = try d.transaction { try CueWriter.applyPlan(d, plan, autoIDs: []) }
-        #expect(st.int("updated") == 1 && st.int("removed") == 2 && st.int("added") == 3)
-        #expect(st.list("skipped") == ["Eleven", "Gone"])
+        let st = try d.transaction { try CueWriter.applyPlan(d, plan, autoIDs: ["12"]) }
+        #expect(st.int("updated") == 2 && st.int("removed") == 3 && st.int("added") == 4)
+        #expect(st.list("skipped") == ["Rated", "Hand F", "Gone"])
         let u = "uuid-10"
         #expect(
             try cues(d, "10") == [
@@ -149,7 +153,31 @@ import Testing
                     comment: "EMERGENCY",
                     cti: 0, al: 1, bls: 2_097_153, contentUUID: u),
             ])
-        #expect(try cues(d, "11").count == 2)
+        #expect(try cues(d, "11").map(\.comment) == ["ARIA", "IN"])  // Energy 5 replaced, the E kept
+        #expect(try cues(d, "12").map(\.comment) == ["Energy 5"])
+        #expect(try cues(d, "13").map(\.comment) == ["MY JUMP"])
+    }
+
+    @Test func templateBeforeTheWrite() throws {
+        let c = Self.cueSQL
+        let d = try db(c("1", "11", 6, 9000, "TEN", -1) + c("2", "11", 0, 30000, "BASS SWAP IN", 2))
+        var t = Track(id: "11", title: "Eleven")
+        t.category = "nohot"
+        let item = CuePlan.Item(
+            id: "11", title: "Eleven", path: "", bpm: 128, nbeats: 0, audio: false,
+            hot: [CuePlan.HotCue(kind: 1, slot: "A", name: "IN", beat: 33, ms: 15000)],
+            mem: [CuePlan.MemCue(name: "START", beat: 1, ms: 0)], flags: [])
+        let st = try d.transaction {
+            try CueTemplate.adding([item], d) { _ in Stats([("hot_cues", .int(1))]) }
+        }
+        #expect(st.int("hot_cues") == 1 && st.int("template_tracks") == 1 && st.int("template_cues") == 2)
+        #expect(try cues(d, "11").map(\.comment) == ["START", "TEN", "IN", "BASS SWAP IN"])
+        let o = CueTemplate.overlay(
+            {
+                var x = t; x.cues = [Cue(kind: 6, t: 9, name: "TEN"), Cue(kind: 1, t: 1, name: "Energy 5")]; return x
+            }(),
+            item)
+        #expect(o.cues.map(\.name) == ["START", "TEN", "IN"] && o.category == "auto")
     }
 
     @Test func applyPlanRerun() throws {

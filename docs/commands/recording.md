@@ -74,4 +74,6 @@ With Rekordbox quit, `--write` also:
 - creates a playlist of the kept tracks, named after the history (`--playlist` to rename, `--folder` to put it in a
   playlist folder), refused if the name is taken ([ADR 0016](../decisions/0016-create-playlists-from-histories.md)).
 
-No cues change: run `set --write` on the playlist for that.
+The playlist's tracks that have no auto-dj cues yet (`mik`, `nohot`) get the cue template, as `apply --write` would
+place it ([ADR 0022](../decisions/0022-cue-template-on-every-write.md)); no other cues change: run `set --write` on the
+playlist for the set's.

@@ -155,11 +155,13 @@ public enum CueWriter {
 
     /// Writes a cue plan.
     ///
-    /// Target tracks: every hot cue must be replaceable (Energy N / CUE(Auto) / START hot cue)
-    /// or the track is skipped. Generated cues are deleted; memory cues the user named are kept
-    /// and never duplicated. Tracks this tool cued before (autoIDs, still unrated): only cues
-    /// with our names are replaced, so any E/F/G notes the user added survive a re-run.
-    /// EMERGENCY is written as an active loop unless a cue that stays already is one.
+    /// Rated tracks are skipped (they may have been rated since planning). Target tracks: every
+    /// hot cue must be replaceable (Energy N / CUE(Auto) / START hot cue) or on E/G, which `set`
+    /// owns, or the track is skipped. Generated cues are deleted; E/G that aren't, and memory
+    /// cues the user named, are kept (memory cues never duplicated). Tracks this tool cued
+    /// before (autoIDs): only cues with our names are replaced, so any E/F/G notes the user
+    /// added survive a re-run. EMERGENCY is written as an active loop unless a cue that stays
+    /// already is one.
     public static func applyPlan(_ db: SQLite, _ plan: [PlanTrack], autoIDs: Set<String>) throws -> Stats {
         let ids = try IDSource(db, "djmdCue")
         let ts = SafeWrite.stamp()
@@ -171,8 +173,8 @@ public enum CueWriter {
         for x in plan {
             let c = try content(db, x.id)
             let cur = try trackCues(db, x.id)
-            let rerun = c != nil && autoIDs.contains(x.id) && c!.rating == 0
-            guard let c, let doomed = planDoomed(x, cur, rerun: rerun) else {
+            let rerun = c != nil && autoIDs.contains(x.id)
+            guard let c, c.rating == 0, let doomed = planDoomed(x, cur, rerun: rerun) else {
                 stats.append("skipped", x.title)
                 continue
             }
@@ -209,7 +211,10 @@ public enum CueWriter {
     /// The cues a plan replaces on a track; nil when the track must be skipped: hand-edited
     /// since planning, or (on a re-run) with the user's own cue in one of our hot cue slots.
     static func planDoomed(_ x: PlanTrack, _ cur: [CueInfo], rerun: Bool) -> Set<String>? {
-        let foreign = cur.contains { $0.kind > 0 && !Category.replaceable($0.comment, kind: $0.kind) }
+        let setOwned = [Config.kind["E"]!, Config.kind["G"]!]
+        let foreign = cur.contains {
+            $0.kind > 0 && !setOwned.contains($0.kind) && !Category.replaceable($0.comment, kind: $0.kind)
+        }
         if !rerun && foreign { return nil }
         let doomed = Set(
             cur.filter {

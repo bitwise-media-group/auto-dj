@@ -14,6 +14,12 @@ Before it plans anything, auto-dj puts every track in one of five states. The st
 A track is `auto` because it's in the **ledger**, `~/Library/Pioneer/_cue_work/applied-tracks.json`, which
 `apply --write` adds to.
 
+E and G pads and `set`'s transition markers (BASS SWAP / FILTER / CUT / SYNC IN and OUT) don't count: `set` owns them,
+so a track with only those is still `nohot`. Every write that includes tracks (`set --write`, `build-set --write`,
+`recording --write`, Save as Playlist in the app) first gives its `mik` and `nohot` tracks the cues `apply --write`
+would, and adds them to the ledger, so a newly imported track gets the template the first time auto-dj writes it
+([ADR 0022](../decisions/0022-cue-template-on-every-write.md)). Rated tracks never get it.
+
 ## Rate a track once you've checked it
 
 Rating moves a track from `auto` to `manual`: auto-dj won't touch it again, and your corrections become the yardstick

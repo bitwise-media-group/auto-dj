@@ -116,12 +116,14 @@ public enum PlaylistWriter {
         return try write(fn, sides)
     }
 
-    /// `write` through SafeWrite on masterDB.
+    /// `write` through SafeWrite on paths' master.db, with the cue template on the playlist's
+    /// tracks that are missing it (recs: the tracks' records; ADR 0022).
     public static func safeWrite(
-        masterDB: String, backupDir: String, name: String, folder: String, contentIDs: [String]
+        _ paths: Paths, name: String, folder: String, contentIDs: [String], recs: [String: Track]
     ) throws -> Stats {
-        try write(masterDB: masterDB, backupDir: backupDir, name: name, folder: folder, contentIDs: contentIDs) {
-            fn, sides in try SafeWrite.write(masterDB, backupDir: backupDir, fn, sidecars: sides)
-        }
+        let template = CueTemplate.missing(contentIDs, recs)
+        return try write(
+            masterDB: paths.masterDB, backupDir: paths.backupDir, name: name, folder: folder, contentIDs: contentIDs
+        ) { fn, sides in try SafeWrite.write(paths, template: template, sidecars: sides, fn) }
     }
 }

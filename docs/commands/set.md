@@ -29,6 +29,11 @@ Prepares a playlist as a set:
    that can't be avoided is a warning, like a key clash, with a vocal-free 4, 8 or 16-bar loop in the outgoing track to
    hold it ([ADR 0020](../decisions/0020-transition-endings-and-vocal-overlaps.md)).
 
+Tracks with no auto-dj cues yet (`mik`, `nohot`: just imported, say) are planned with the cue template, and `--write`
+writes it on them first, as `apply --write` would, so E and G line up with their new IN and OUT. The report lists them
+under "Cue template (written first …)"; rated tracks never get it
+([ADR 0022](../decisions/0022-cue-template-on-every-write.md)).
+
 Run [`features`](features.md) first after adding tracks: `set` reads the cached features to place bass swaps and the
 vocal analysis to avoid vocal overlaps.
 

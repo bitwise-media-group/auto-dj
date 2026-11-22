@@ -143,13 +143,13 @@ public enum Recording {
     }
 
     /// Creates the playlist from the exported tracks (master.db through SafeWrite, with
-    /// masterPlaylists6.xml) and saves the transitions played to the transition cache.
+    /// masterPlaylists6.xml, and the cue template on its tracks missing it) and saves the
+    /// transitions played to the transition cache.
     public static func write(
         _ paths: Paths, _ s: Session, _ ts: [MixExport.ExportTrack], playlist: String, folder: String
     ) throws -> Stats {
         let stats = try PlaylistWriter.safeWrite(
-            masterDB: paths.masterDB, backupDir: paths.backupDir, name: playlist, folder: folder,
-            contentIDs: ts.map(\.entry.id))
+            paths, name: playlist, folder: folder, contentIDs: ts.map(\.entry.id), recs: s.recs)
         var cache = try TransitionCache.load(paths.transitions)
         var n = 0
         for i in ts.indices.dropFirst() {

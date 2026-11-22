@@ -38,9 +38,11 @@ Set of 14 tracks at 126 BPM, from a pool of 214 (* = picked; energy: yours, ~ Mi
 ```
 
 It's a dry run: nothing is written. With `--write --name "<playlist>"` (Rekordbox quit) it creates the set as a new
-playlist, backing up `master.db` first; then [`set "<playlist>"`](set.md) previews it and writes its cues. In the app,
-pick tracks in the Library (Return picks, Space previews from the drop) and press **Build Set**: the draft opens in
-Sets, where tracks can be re-rolled or removed before it's saved as a playlist.
+playlist, backing up `master.db` first, and gives its tracks that have no auto-dj cues yet (`mik`, `nohot`) the cue
+template, as `apply --write` would ([ADR 0022](../decisions/0022-cue-template-on-every-write.md)); then
+[`set "<playlist>"`](set.md) previews it and writes its cues. In the app, pick tracks in the Library (Return picks,
+Space previews from the drop) and press **Build Set**: the draft opens in Sets, where tracks can be re-rolled or removed
+before it's saved as a playlist.
 
 ## Energy
 

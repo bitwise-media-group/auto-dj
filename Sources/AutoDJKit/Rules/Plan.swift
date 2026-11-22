@@ -124,3 +124,93 @@ public enum CuePlan {
         }
     }
 }
+
+/// The cue template on every track a write to Rekordbox touches (ADR 0022): tracks still in a
+/// generated state (`mik`, `nohot`) get the IN / BRIDGE / DROP / OUT / EMERGENCY hot cues and
+/// the START / DROP / BASS SWAP memory cues in the same write, as `apply --write` would place
+/// them, and are recorded in the ledger. Rated tracks are never touched.
+public enum CueTemplate {
+    /// The states whose tracks are missing the template.
+    public static let states: Set<String> = ["mik", "nohot"]
+
+    /// The template plan for the tracks among ts that are missing it, each once.
+    public static func missing(_ ts: [Track], _ R: Rules = .default) -> [CuePlan.Item] {
+        var seen = Set<String>()
+        return ts.filter { $0.rating == 0 && states.contains($0.category) && !$0.beats.isEmpty }
+            .filter { seen.insert($0.id).inserted }
+            .map { CuePlan.plan($0, R) }
+    }
+
+    /// The template plan for the tracks with these IDs that are missing it.
+    public static func missing(_ ids: [String], _ recs: [String: Track]) -> [CuePlan.Item] {
+        missing(ids.compactMap { recs[$0] })
+    }
+
+    /// The plan's cues as djmdCue rows read back.
+    static func cues(_ it: CuePlan.Item) -> [Cue] {
+        it.hot.map { h in
+            var c = Cue(kind: h.kind, t: Double(h.ms) / 1000, name: h.name)
+            if let loop = h.loop, let out = h.outMS {
+                c.out = Double(out) / 1000
+                c.activeLoop = 1
+                c.beatLoopSize = loop << 16 + 1
+            }
+            return c
+        } + it.mem.map { Cue(kind: 0, t: Double($0.ms) / 1000, name: $0.name) }
+    }
+
+    /// t as it is once it is written: generated cues replaced by the template, the rest kept
+    /// (memory cues the template would duplicate are not added), `auto` from then on.
+    public static func overlay(_ t: Track, _ it: CuePlan.Item) -> Track {
+        var t = t
+        let kept = t.cues.filter { !Category.replaceable($0.name, kind: $0.kind) }
+        let add = cues(it).filter { c in
+            c.kind > 0 || !kept.contains { $0.kind == 0 && $0.name == c.name && abs($0.t - c.t) <= 0.5 }
+        }
+        t.cues = (kept + add).sorted { ($0.t, $0.kind) < ($1.t, $1.kind) }
+        t.category = "auto"
+        return t
+    }
+
+    /// fn, with the template written first (`CueWriter.applyPlan`); its counts are added as
+    /// template_tracks / template_cues / template_removed / template_skipped.
+    static func adding(_ items: [CuePlan.Item], _ db: SQLite, _ fn: ApplyFunc) throws -> Stats {
+        if items.isEmpty { return try fn(db) }
+        let t = try CueWriter.applyPlan(db, CuePlan.toDB(items), autoIDs: [])
+        let st = try fn(db)
+        st.set("template_tracks", .int(t.int("updated")))
+        st.set("template_cues", .int(t.int("added")))
+        st.set("template_removed", .int(t.int("removed")))
+        st.set("template_skipped", .list(t.list("skipped")))
+        st.add("content_cues", t.int("content_cues"))
+        return st
+    }
+
+    /// Records the template-cued tracks in the ledger (a skipped one isn't).
+    static func record(_ paths: Paths, _ items: [CuePlan.Item], _ st: Stats) throws {
+        let skipped = Set(st.list("template_skipped"))
+        let ids = items.filter { !skipped.contains($0.title) }.map(\.id)
+        if !ids.isEmpty { try Ledger.add(paths.ledger, ids) }
+    }
+
+    /// One report line for the plan, or nil when no track is missing the template.
+    public static func report(_ items: [CuePlan.Item]) -> String? {
+        guard !items.isEmpty else { return nil }
+        return "Cue template (written first, as apply --write would) on \(items.count) track(s) missing it: "
+            + items.map(\.title).joined(separator: ", ")
+    }
+}
+
+extension SafeWrite {
+    /// `write` on paths' master.db with the cue template first written on the tracks in
+    /// template (`CueTemplate.missing`), which are then recorded in the ledger.
+    public static func write(
+        _ paths: Paths, template: [CuePlan.Item], sidecars: [Sidecar] = [], _ fn: ApplyFunc
+    ) throws -> Stats {
+        let st = try write(
+            paths.masterDB, backupDir: paths.backupDir, { try CueTemplate.adding(template, $0, fn) },
+            sidecars: sidecars)
+        try CueTemplate.record(paths, template, st)
+        return st
+    }
+}

@@ -83,6 +83,7 @@ nav = [
     { "0019 In-process previews" = "decisions/0019-render-previews-in-process.md" },
     { "0020 Transition endings and vocals" = "decisions/0020-transition-endings-and-vocal-overlaps.md" },
     { "0021 Building sets around picks" = "decisions/0021-build-sets-around-picked-tracks.md" },
+    { "0022 The cue template on every write" = "decisions/0022-cue-template-on-every-write.md" },
   ] },
 ]
 

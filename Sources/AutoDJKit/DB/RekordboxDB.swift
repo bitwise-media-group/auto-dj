@@ -204,7 +204,20 @@ public enum Category {
         isAutoCue(name) || (name == "START" && kind == 1)
     }
 
-    /// Sorts a track:
+    /// The memory cues `set` writes: transition markers on both tracks (ADR 0011).
+    public static let setMarkers: Set<String> = [
+        "BASS SWAP IN", "BASS SWAP OUT", "FILTER IN", "FILTER OUT", "CUT IN", "CUT OUT", "SYNC IN", "SYNC OUT",
+    ]
+
+    /// A cue `set` owns: an E or G hot cue (ADR 0009), or one of its transition markers. They
+    /// don't change a track's state, so a track a set was written to before it had the
+    /// template still gets it (ADR 0022); the cue writers never remove them.
+    public static func setOwned(_ c: Cue) -> Bool {
+        c.kind == Config.kind["E"]! || c.kind == Config.kind["G"]!
+            || (c.kind == 0 && setMarkers.contains(Config.norm(c.name)))
+    }
+
+    /// Sorts a track (cues `set` owns don't count, see `setOwned`):
     ///
     ///     manual - rated, or has the user's own IN/DROP/OUT hot cues (training data)
     ///     auto   - unrated and cued by this tool (listed in the ledger); not training data
@@ -222,7 +235,7 @@ public enum Category {
         var anyHot = false
         var anyAutoHot = false
         var allReplaceable = true
-        for c in cues {
+        for c in cues where !setOwned(c) {
             if c.kind > 0 {
                 hot.insert(c.name)
                 anyHot = true
