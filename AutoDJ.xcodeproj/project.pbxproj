@@ -20,6 +20,7 @@
 		7ECFFF8DE9CE2E6F329E28C5 /* TrackTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D7A2A529FB11CEAECCC8917 /* TrackTable.swift */; };
 		919378F2875B2593D2F1E34E /* AutoDJKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4C3D71A47376925D190145DD /* AutoDJKit */; };
 		91C088B79AF191E2B4D7F4C4 /* BuildViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4234CA7B6A93B3743992C85 /* BuildViews.swift */; };
+		B1768DC7D90506BBC2192A0D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 94F6C66B04C9123E29E93D16 /* AppIcon.icon */; };
 		B27F48D1ECD7740DFCA76EAA /* SetModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327760C081D67E591606BA02 /* SetModel.swift */; };
 		B616C977BDD6DB6B0D2A82D1 /* SetsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0E1537D07A8691B6032A862 /* SetsView.swift */; };
 		D928EDC13585913DDEBEA050 /* LibraryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6459D9A3FBC89B93BD323FC5 /* LibraryViews.swift */; };
@@ -63,6 +64,7 @@
 		6CE07AF8813F8F55F879FA20 /* auto-dj */ = {isa = PBXFileReference; includeInIndex = 0; path = "auto-dj"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B2F148C0AC18A31D670285C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D7A2A529FB11CEAECCC8917 /* TrackTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTable.swift; sourceTree = "<group>"; };
+		94F6C66B04C9123E29E93D16 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		A081A4BC4977D8BEEA820E7C /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		B0E1537D07A8691B6032A862 /* SetsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetsView.swift; sourceTree = "<group>"; };
 		C11B94CF4A378072FDDCA25C /* TrackTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTimeline.swift; sourceTree = "<group>"; };
@@ -91,6 +93,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5C4411BC8C83CAA77972EF04 /* app-icon */ = {
+			isa = PBXGroup;
+			children = (
+				94F6C66B04C9123E29E93D16 /* AppIcon.icon */,
+			);
+			path = "app-icon";
+			sourceTree = "<group>";
+		};
 		67D359E1F898C65A5A9ADDF1 /* Config */ = {
 			isa = PBXGroup;
 			children = (
@@ -111,6 +121,7 @@
 			isa = PBXGroup;
 			children = (
 				F58145109936932E37BA52A4 /* App */,
+				B87FBC6A251417BFE490EB81 /* design */,
 				89CF166F582E87B618F8B26A /* Packages */,
 				93CD6F0D3D5BF877ACB7A88E /* Sources */,
 				A31FF197AC75F8EE810601F0 /* Products */,
@@ -140,6 +151,14 @@
 				CBF8FBDB64CF98BDBA2ED7EF /* AutoDJ.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B87FBC6A251417BFE490EB81 /* design */ = {
+			isa = PBXGroup;
+			children = (
+				5C4411BC8C83CAA77972EF04 /* app-icon */,
+			);
+			path = design;
 			sourceTree = "<group>";
 		};
 		C9AE05CCDD4B944C2D9456E4 /* AutoDJ */ = {
@@ -199,6 +218,7 @@
 			buildConfigurationList = 8FD270E26B94EED205EEF063 /* Build configuration list for PBXNativeTarget "AutoDJ" */;
 			buildPhases = (
 				3C2EED1DE28964D7F5F3E6E1 /* Sources */,
+				9B82B60A090383BD9BAC3D62 /* Resources */,
 				EFA36453EFB3B7B4950C320A /* Frameworks */,
 				C450CD1FCB8E14925456B530 /* Embed Dependencies */,
 			);
@@ -256,6 +276,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9B82B60A090383BD9BAC3D62 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1768DC7D90506BBC2192A0D /* AppIcon.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		3C2EED1DE28964D7F5F3E6E1 /* Sources */ = {

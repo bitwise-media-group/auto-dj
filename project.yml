@@ -16,6 +16,11 @@ name: AutoDJ
 
 options:
   bundleIdPrefix: uk.co.bitwisemedia
+  # Icon Composer documents are bundles: one resource, not a folder of files.
+  fileTypes:
+    icon:
+      file: true
+      buildPhase: resources
   deploymentTarget:
     macOS: "15.0"
   xcodeVersion: "27.2"
@@ -47,6 +52,8 @@ targets:
     sources:
       - path: App/AutoDJ
         excludes: ["**/.claude"] # agent tooling, never app sources
+      # The app icon (Icon Composer), with its sources in design/app-icon.
+      - path: design/app-icon/AppIcon.icon
     dependencies:
       - package: AutoDJ
         product: AutoDJKit
@@ -61,6 +68,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: uk.co.bitwisemedia.auto-dj
         PRODUCT_NAME: AutoDJ
         COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     entitlements:
       path: App/AutoDJ/AutoDJ.entitlements
       properties:

@@ -1,0 +1,204 @@
+{
+  "fill-specializations" : [
+    {
+      "value" : {
+        "solid" : "extended-srgb:0.16471,0.16863,0.18431,1.00000"
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "solid" : "extended-srgb:0.04314,0.04706,0.05490,1.00000"
+      }
+    }
+  ],
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:1.00000,0.17647,0.23922,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "1-a-rim.svg",
+          "name" : "a-rim"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:1.00000,0.17647,0.23922,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "1-a-face.svg",
+          "name" : "a-face",
+          "opacity-specializations" : [
+            {
+              "value" : 0.45
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.38
+            }
+          ]
+        }
+      ],
+      "name" : "A IN",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.09804,0.82745,0.87843,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "2-b-rim.svg",
+          "name" : "b-rim"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.09804,0.82745,0.87843,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "2-b-face.svg",
+          "name" : "b-face",
+          "opacity-specializations" : [
+            {
+              "value" : 0.45
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.38
+            }
+          ]
+        }
+      ],
+      "name" : "B BRIDGE",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.70980,0.90196,0.11373,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "3-c-rim.svg",
+          "name" : "c-rim"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.70980,0.90196,0.11373,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "3-c-face.svg",
+          "name" : "c-face",
+          "opacity-specializations" : [
+            {
+              "value" : 0.45
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.38
+            }
+          ]
+        }
+      ],
+      "name" : "C DROP",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    },
+    {
+      "layers" : [
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.56078,0.35686,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "4-d-rim.svg",
+          "name" : "d-rim"
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "solid" : "extended-srgb:0.56078,0.35686,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass" : true,
+          "image-name" : "4-d-face.svg",
+          "name" : "d-face",
+          "opacity-specializations" : [
+            {
+              "value" : 0.45
+            },
+            {
+              "appearance" : "dark",
+              "value" : 0.38
+            }
+          ]
+        }
+      ],
+      "name" : "D OUT",
+      "shadow" : {
+        "kind" : "layer-color",
+        "opacity" : 0.6
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.2
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "squares" : "shared"
+  }
+}
