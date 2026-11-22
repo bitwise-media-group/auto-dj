@@ -10,8 +10,8 @@ decision-makers: Deavon
 
 [0012](0012-set-previews.md) renders the transition clips and the full-set mix with ffmpeg, one after the other. Each
 track was decoded about three times by short ffmpeg processes, there was no progress or cancellation, and nothing could
-be heard until `set.mp3` had been encoded. Melodic Dark took about 50 s, and Dark Mode about 96 s. How should the
-Swift app ([0018](0018-rewrite-as-a-native-macos-app.md)) render previews?
+be heard until `set.mp3` had been encoded. Melodic Dark took about 50 s, and Dark Mode about 96 s. How should the Swift
+app ([0018](0018-rewrite-as-a-native-macos-app.md)) render previews?
 
 ## Decision Drivers
 
@@ -28,9 +28,10 @@ Swift app ([0018](0018-rewrite-as-a-native-macos-app.md)) render previews?
 
 ## Decision Outcome
 
-Chosen option: "In-process, with WSOLA", because it keeps 0012's mix with no external tool, and the stretcher is the same
-algorithm family as ffmpeg's `atempo`, so the previews sound as before. `AVAudioUnitTimePitch` is a phase vocoder that
-sounds different on drums, and it needs the Audio Unit registry. That registry isn't available in sandboxed CI or tests.
+Chosen option: "In-process, with WSOLA", because it keeps 0012's mix with no external tool, and the stretcher is the
+same algorithm family as ffmpeg's `atempo`, so the previews sound as before. `AVAudioUnitTimePitch` is a phase vocoder
+that sounds different on drums, and it needs the Audio Unit registry. That registry isn't available in sandboxed CI or
+tests.
 
 - The timeline (`Timeline.mix`, `Timeline.pair`) is pure data, known before any audio exists, so the app draws the whole
   set at once.
@@ -40,13 +41,13 @@ sounds different on drums, and it needs the Audio Unit registry. That registry i
   `<work>/renders/segments/`, keyed by a hash of its file and every parameter relative to its own start. A segment that
   only moved in time is found again, so a reorder re-renders just the tracks around the change.
 - A mix assembler sums finished segments in order and releases each final chunk (everything before the next track's
-  start) once all earlier tracks are done. The app's player schedules the chunks as they arrive, and plays and seeks
-  up to the rendered edge.
+  start) once all earlier tracks are done. The app's player schedules the chunks as they arrive, and plays and seeks up
+  to the rendered edge.
 - A file that can't be read costs only its own segment (silence in the mix) and its clips; the render goes on.
 - The DSP ports from 0012 unchanged in effect: the zero-phase FFT low-cut (vDSP, padded to a power of two), the STFT
   low-pass sweep, the soft limiter.
-- Export writes 0012's bundle layout (`index.html`, `set.json`, `01-02.<ext>`, `set.<ext>`) to a folder you pick, as
-  m4a (AAC 192 kbps, the default; every browser plays it) or WAV. MP3 would need LAME bundled and isn't offered. The page
+- Export writes 0012's bundle layout (`index.html`, `set.json`, `01-02.<ext>`, `set.<ext>`) to a folder you pick, as m4a
+  (AAC 192 kbps, the default; every browser plays it) or WAV. MP3 would need LAME bundled and isn't offered. The page
   now escapes the playlist name in its title.
 
 ### Consequences

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 # The auto-dj documentation site (Zensical via uv). Not a Python package: no
-# [build-system]; the go archetype's `sync`, `docs-build` and `serve` tasks run
-# `uv sync` and `uv run zensical …` against this file.
+# [build-system]; the `docs-build` and `serve` tasks (tasks.toml, through the
+# toolchain's docs.sh) run `uv sync` and `uv run zensical …` against this file.
 [project]
 name = "auto-dj-docs"
 version = "0.1.0"

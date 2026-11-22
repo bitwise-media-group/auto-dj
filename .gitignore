@@ -1,7 +1,3 @@
-# go
-/auto-dj
-/dist/
-
 # coverage (mise run test)
 coverage/
 
@@ -11,7 +7,6 @@ node_modules/
 # local cue work
 work/
 *.db
-!internal/sqlcipher/testdata/*.db
 !Tests/AutoDJKitTests/Fixtures/*.db
 
 # os

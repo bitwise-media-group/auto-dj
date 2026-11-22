@@ -1,8 +1,9 @@
 # Copyright 2026 BitWise Media Group Ltd
 # SPDX-License-Identifier: MIT
 
-# CodeQL -- actions always, plus go (autobuild with the mise-pinned Go) from the
-# root go.mod.
+# CodeQL -- the actions language (build-free); there is no go.mod or package.json
+# here, so detection adds no other leg. Runs on macOS (runs-on) like the other
+# workflows; the zizmor job stays on Linux (a container action).
 name: Security Analysis
 
 on:
@@ -25,3 +26,5 @@ permissions:
 jobs:
   analyze:
     uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@35d8e9a1ce772f67f97e73484dc5b7a50c29e0f3 # v8.1.1
+    with:
+      runs-on: macos-latest

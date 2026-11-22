@@ -13,9 +13,10 @@ The rules were learned from the 51 hand-cued tracks in the library. Most cues la
 ones or one phrase away. The decision records in `docs/decisions/` have the template, how the rules work, the accuracy
 tables and the Rekordbox DB details.
 
-It works from Rekordbox's own beat grid and phrase analysis, plus a bass/mid energy analysis of the audio (ffmpeg and an
-FFT). It's a single Go binary that reads and writes Rekordbox's encrypted `master.db` itself, and it needs no external
-services.
+It works from Rekordbox's own beat grid and phrase analysis, plus a bass/mid energy analysis of the audio (AVFoundation
+and an FFT). It's a native macOS app and command-line tool (Swift,
+[ADR 0018](docs/decisions/0018-rewrite-as-a-native-macos-app.md)) that reads and writes Rekordbox's encrypted
+`master.db` itself, and it needs no external tools or services.
 
 The documentation site (`mise run serve`, published at <https://oss.bitwisemedia.uk/auto-dj/>) explains the cue layout
 and every command, and walks through building a set from scratch. To see the whole thing without Rekordbox:
@@ -31,8 +32,16 @@ brew install mise
 cd ~/Repos/bitwise-media-group/auto-dj
 git submodule update --init         # the shared toolchain, mounted at .mise/
 mise trust --all                    # once per clone
-mise install                        # Go, govulncheck and ffmpeg at the pinned versions
-mise run build                      # -> ./auto-dj (or: go install ./cmd/auto-dj)
+mise install                        # Swift and XcodeGen at the pinned versions
+mise run build                      # the auto-dj CLI, in $(swift build -c release --show-bin-path)
+mise run app-run                    # the AutoDJ app (signed Debug build, launched; needs Xcode)
+```
+
+It needs macOS 15 and Xcode (for the macOS SDK); there is nothing else to install. The app carries the same CLI inside
+it, so with the app installed you can put that on `PATH` instead of building it:
+
+```sh
+ln -s /Applications/AutoDJ.app/Contents/MacOS/auto-dj ~/.local/bin/auto-dj
 ```
 
 `auto-dj` knows Rekordbox's `master.db` key. Set `REKORDBOX_DB_KEY` only if a future Rekordbox changes it.
@@ -98,14 +107,14 @@ The first track's E is `START` (its first downbeat), and the last track's G is c
   anything changes, along with every pair a set writes. When two tracks meet again in another playlist, their pair is
   restored from it.
 
-Every run renders an MP3 of every transition, the whole set as `set.mp3`, and an `index.html` set-list page into a
-folder named after the set (`Melodic Dark` → `melodic-dark/`) in `--preview-dir DIR` (default `<work>`); `--no-preview`
-skips them. **Play full set** on the page plays the mix (or tap a track number to start there). It's a dry run built
-from the original audio files: each track from E (the first from START) until it leaves the mix. The whole set plays at
-a fixed 128 BPM, every track time-stretched with the key kept; `--bpm N` picks another tempo, and `--bpm 0` beat-matches
-each incoming track to the outgoing one instead, returning it to its own tempo once the outgoing track has gone.
-Rendering takes about a minute for an hour-long set; `--no-mix` skips it. Each transition clip is the same mix of just
-those two tracks:
+Every run renders an AAC (`.m4a`; `--format wav` for WAV) of every transition, the whole set as `set.m4a`, and an
+`index.html` set-list page into a folder named after the set (`Melodic Dark` → `melodic-dark/`) in `--preview-dir DIR`
+(default `<work>`); `--no-preview` skips them. **Play full set** on the page plays the mix (or tap a track number to
+start there). It's a dry run built from the original audio files: each track from E (the first from START) until it
+leaves the mix. The whole set plays at a fixed 128 BPM, every track time-stretched with the key kept; `--bpm N` picks
+another tempo, and `--bpm 0` beat-matches each incoming track to the outgoing one instead, returning it to its own tempo
+once the outgoing track has gone. Rendering takes about a minute for an hour-long set; `--no-mix` skips it. Each
+transition clip is the same mix of just those two tracks:
 
 - The outgoing track plays from 8 beats before it reaches G.
 - The incoming track starts at E, beat-matched (both at the set tempo, or with `--bpm 0` the incoming one stretched to
@@ -152,10 +161,10 @@ snapped to its phrase start ([ADR 0017](docs/decisions/0017-split-recordings-by-
   file here), where it was heard, and its `cut` (h:mm:ss.sss into the recording). **Review it**: edit a `cut` to move
   it, clear it to leave the track out, or give a `no-audio` track a cut to put it in. Re-runs reuse the file and its
   edits; `--realign` aligns again (keeping hand-edited cuts).
-- `NN - Artist - Title.m4a` (256 kb/s AAC, Apple's encoder through `afconvert` when available, `--encoder ffmpeg` for
-  ffmpeg's): the track's own title, artist, composer, genre, comment and label (as grouping); the set as album (default:
-  the history's name), `--dj` as album artist, `--date` (default: the history's day), track n/N, and `--art` as the
-  cover. Each file holds exactly its samples (checked), so the files play back gapless as the original mix.
+- `NN - Artist - Title.m4a` (256 kb/s AAC, Apple's encoder): the track's own title, artist, composer, genre, comment and
+  label (as grouping); the set as album (default: the history's name), `--dj` as album artist, `--date` (default: the
+  history's day), track n/N, and `--art` as the cover. Each file holds exactly its samples (checked), so the files play
+  back gapless as the original mix.
 - `<album>.cue` (the whole WAV, a track per cut), `tracklist.txt` (`h:mm:ss  Artist – Title`) and `tracklist.json`.
 
 The silence before the music and after it (below −60 dBFS: the recorder runs a moment before you start and after you
@@ -185,20 +194,23 @@ corrections.
 
 ## Development
 
-The shared [toolchain](https://github.com/bitwise-media-group/toolchain) submodule at `.mise/` provides the gates (go
-archetype: golangci-lint, govulncheck, gotestsum and the version-stamped build, plus license, prose and workflow lint).
-`make <task>` and `mise run <task>` are interchangeable.
+The shared [toolchain](https://github.com/bitwise-media-group/toolchain) submodule at `.mise/` provides the common gates
+(license, prose, shell and workflow lint); `tasks.toml` adds the Swift build, test, format and lint, the Xcode tasks and
+the CLI tasks. `make <task>` and `mise run <task>` are interchangeable.
 
 ```sh
-mise run fmt     # license headers, go fmt + golangci-lint --fix, prettier for markdown
-mise run lint    # golangci-lint, govulncheck, license, prose, shell and workflow checks
-mise run test    # go test with race detector + coverage -> coverage/ (synthetic tracks; no Rekordbox needed)
-mise run build   # -> ./auto-dj with version metadata
-mise run pr      # all of the above, then ./commit.sh if present
+mise run fmt        # swift format, license headers, prettier for markdown
+mise run lint       # swift format lint --strict, license, prose, shell and workflow checks
+mise run test       # swift test + coverage -> coverage/ (synthetic tracks; no Rekordbox needed)
+mise run build      # swift build -c release (AutoDJKit + the auto-dj CLI)
+mise run gen        # AutoDJ.xcodeproj from project.yml (XcodeGen; after adding/removing app files)
+mise run app-build  # the app, unsigned
+mise run pr         # all of the above, then ./commit.sh if present
 mise run serve   # docs site on http://localhost:8004 (regenerates the demo walkthrough first)
 ```
 
-The preview render test runs only when `ffmpeg` and `ffprobe` are on `PATH`.
+AutoDJKit uses Apple frameworks, so `build` and `test` skip on Linux (the GitHub CI jobs); Xcode Cloud builds the app
+and runs `swift test` first (`ci_scripts/ci_post_clone.sh`).
 
 Renovate bumps the submodule to each new toolchain tag (`.gitmodules` records the tag in `branch`). Don't run
 `mise lock` here: the lockfile lives in the toolchain.
@@ -219,27 +231,22 @@ Renovate bumps the submodule to each new toolchain tag (`.gitmodules` records th
 ## Layout
 
 ```text
-cmd/auto-dj/         main
-internal/
-  cli/               command line (cobra)
-  config/            paths, cue template, rule thresholds (Rules)
-  sqlcipher/         SQLCipher 4 decrypt / encrypt of master.db (pure Go)
-  db/                master.db access, track states, safe writer, ledger, histories, playlists
-  anlz/              beat grid (PQTZ) + phrase (PSSI) parsing
-  features/          audio band energies via ffmpeg + FFT (cache: <work>/features/*.f32.gz)
-  num/               numpy behaviours the rules rely on (percentiles, pairwise sums, rounding)
-  tracks/            per-track records
-  rules/             cue placement rules
-  plan/              rules -> reviewable JSON plan
-  setlist/           playlists: key check, order suggestion, set E/G + BASS SWAP cues
-  pairs/             transition cache (restore set pairs when tracks meet again)
-  preview/           transition audio previews + set-list page
-  mixalign/          line a play history up against a set recording (`auto-dj recording`)
-  mixexport/         cut, encode and tag the recording's tracks; cue sheet + tracklist
-  evaluate/          accuracy against hand-cued tracks
-  review/            HTML review page; templates/ holds both pages
-  testtrack/         synthetic tracks for the tests
-  demo/              the generated demo set + walkthrough (`auto-dj demo`); synth/ renders the tracks
-docs/                documentation site (Zensical, zensical.toml); decisions/ holds the ADRs
-overrides/           the docs site's landing page and header
+Package.swift        AutoDJKit + the auto-dj CLI (SwiftPM)
+Sources/AutoDJKit/
+  Num/               numpy behaviours the rules rely on (percentiles, pairwise sums, rounding)
+  Config/            paths, cue template, rule thresholds (Rules.default)
+  DB/                SQLCipher 4 (CommonCrypto), master.db access, safe writer, ledger, histories, playlists
+  Tracks/            beat grid (PQTZ) + phrase (PSSI) parsing, per-track records
+  Audio/             AVFoundation decode, decimation, WSOLA time-stretch
+  Features/          band energies via vDSP (cache: <work>/features/*.f32.lzfse)
+  Rules/             cue placement rules, the reviewable JSON plan, accuracy against hand-cued tracks
+  Review/            HTML review page
+  Setlist/           playlists: key check, order suggestion, set E/G + BASS SWAP cues, transition cache
+  Preview/           transition previews, the full-set mix and the set-list page (in process)
+  Recording/         line a play history up against a set recording; cut, encode and tag its tracks
+  Demo/              the synthetic demo tracks and walkthrough
+Sources/AutoDJCommands/  the commands (swift-argument-parser)
+Sources/AutoDJCLI/   the auto-dj entry point (also embedded in the app as Contents/MacOS/auto-dj)
+Tests/               Swift Testing (synthetic tracks, checked-in fixtures)
+App/                 the macOS app (SwiftUI); project.yml -> AutoDJ.xcodeproj (XcodeGen)
 ```

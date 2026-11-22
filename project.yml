@@ -50,6 +50,12 @@ targets:
     dependencies:
       - package: AutoDJ
         product: AutoDJKit
+      # the command line, embedded as AutoDJ.app/Contents/MacOS/auto-dj and signed with the app
+      - target: auto-dj
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uk.co.bitwisemedia.auto-dj
@@ -75,6 +81,28 @@ targets:
         NSDownloadsFolderUsageDescription: auto-dj reads your Rekordbox tracks to analyse them and render set previews.
         NSRemovableVolumesUsageDescription: auto-dj reads tracks and gig recordings on external drives and USB sticks.
         NSNetworkVolumesUsageDescription: auto-dj reads tracks stored on network drives.
+
+  # The auto-dj command line, built from the same entry point as SwiftPM's `auto-dj` product
+  # against the package's AutoDJCommands library. It only exists to be embedded in the app
+  # (SKIP_INSTALL keeps `xcodebuild archive` an app archive); link it onto PATH with
+  #   ln -s /Applications/AutoDJ.app/Contents/MacOS/auto-dj ~/.local/bin/auto-dj
+  auto-dj:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/AutoDJCLI
+    dependencies:
+      - package: AutoDJ
+        product: AutoDJCommands
+    settings:
+      base:
+        PRODUCT_NAME: auto-dj
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.bitwisemedia.auto-dj.cli
+        SKIP_INSTALL: YES
+        # an Info.plist in the binary (__TEXT,__info_plist): codesign takes the identifier from
+        # it, and it carries the app's version
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
 
 schemes:
   AutoDJ:

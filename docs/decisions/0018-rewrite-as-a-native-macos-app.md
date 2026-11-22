@@ -9,8 +9,8 @@ decision-makers: Deavon
 ## Context and Problem Statement
 
 Building a set meant a terminal command, about a minute of silent ffmpeg work, then a static page in a browser. There
-was no way to reorder tracks and hear the result, no progress per track, and nothing to hear until the whole render
-had finished. Should auto-dj become an app, and if so, how much of the Go code should survive?
+was no way to reorder tracks and hear the result, no progress per track, and nothing to hear until the whole render had
+finished. Should auto-dj become an app, and if so, how much of the Go code should survive?
 
 ## Decision Drivers
 
@@ -43,14 +43,14 @@ stays as the reference until the cut-over; every phase is gated on a diff agains
 - Only the numpy semantics that decide where a cue lands are kept: linear-interpolation percentiles, round-half-even
   beat snapping, first-wins ties. [0013](0013-port-to-go.md)'s bit-exact pairwise sums and Go-compatible JSON are not.
 - File formats may change. The feature cache is now `<md5 of the NFC file name>.f32.lzfse` (LZFSE: `ADJ2`, version,
-  frame count, column count, float32 rows) beside the Go build's `.f32.gz`. JSON artifacts are written by
-  `JSONEncoder` (pretty-printed, sorted keys).
+  frame count, column count, float32 rows) beside the Go build's `.f32.gz`. JSON artifacts are written by `JSONEncoder`
+  (pretty-printed, sorted keys).
 
 ### Consequences
 
 - Good, because sets are built interactively, and the preview render is about 20× faster (see 0019).
-- Good, because Apple's frameworks replace ffmpeg, gonum, golang.org/x/text and a hand-written JSON layer: `ffmpeg` is no
-  longer required.
+- Good, because Apple's frameworks replace ffmpeg, gonum, golang.org/x/text and a hand-written JSON layer: `ffmpeg` is
+  no longer required.
 - Bad, because the app is macOS-only, and the CLI no longer builds on Linux.
 - Bad, because a JSON artifact written by the Go build and one written by the Swift build differ in layout. Both builds
   read each other's `plan.json`, `transitions.json` and `applied-tracks.json`.
@@ -61,8 +61,8 @@ Checked against the Go binary on the real library (263 tracks):
 
 - Features: decoding follows ffmpeg's: a stereo source is downmixed to (L + R) / √2, and 44.1 kHz audio is decimated to
   11025 Hz by a Kaiser-windowed sinc as ffmpeg's resampler does (other rates use AVAudioConverter's Mastering
-  resampler). Bands 0–2 match the Go cache to within 0.05% of each column's maximum on every track; the top band and
-  the flux to within about 2% (8% on the two 48 kHz tracks).
+  resampler). Bands 0–2 match the Go cache to within 0.05% of each column's maximum on every track; the top band and the
+  flux to within about 2% (8% on the two 48 kHz tracks).
 - `status`: the same counts. `evaluate` and `evaluate -v`: byte-identical, on features computed by the Swift build.
 - `plan` (auto and manual, every track): 2,232 of 2,232 cues on the same beat.
 - `apply --write` on a copy of `master.db`: the same updated / skipped / removed / added counts as Go, and Go reads the
@@ -77,8 +77,8 @@ Checked against the Go binary on the real library (263 tracks):
   report flags for review: a status either side of the 0.88 threshold, the same cut with another start cue, and three
   cuts that land elsewhere. The export (AAC through AVFoundation instead of afconvert and ffmpeg) is checked to play
   each file's exact samples, and `--write` creates a playlist Go reads.
-- `demo`: every walkthrough fragment the docs include (tracks, features, plan, both set reports) is byte-identical to the
-  Go build's, though the synth draws its noise from its own seeded generator.
+- `demo`: every walkthrough fragment the docs include (tracks, features, plan, both set reports) is byte-identical to
+  the Go build's, though the synth draws its noise from its own seeded generator.
 
 ## More Information
 

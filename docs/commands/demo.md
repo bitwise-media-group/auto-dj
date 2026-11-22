@@ -6,7 +6,7 @@ description:
 # demo
 
 ```text
-auto-dj demo [DIR] [--tracks DIR] [--bpm 128] [--no-open]
+auto-dj demo [DIR] [--tracks DIR] [--bpm 128] [--format m4a|wav] [--no-open]
 ```
 
 Shows what auto-dj does end to end, on music that's free to use. It renders the ten tracks of the demo set as 24-bit
@@ -27,6 +27,7 @@ knows each track's beat grid and phrases, so it supplies the analysis Rekordbox 
 | `DIR`          | `<work>/demo` | Where the reports and `preview/` go                                        |
 | `--tracks DIR` | `DIR/tracks`  | Where the AIFF files go (about 560 MB)                                     |
 | `--bpm N`      | 128           | The preview's fixed tempo, key kept; `0` plays each track at its own tempo |
+| `--format`     | `m4a`         | The preview's audio format: `m4a` (AAC) or `wav`                           |
 | `--no-open`    | off           | Don't open the preview page                                                |
 
 To follow the [walkthrough](../guides/building-a-set.md) in Rekordbox, import `DIR/tracks` from this command.
