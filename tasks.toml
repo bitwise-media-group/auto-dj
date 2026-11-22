@@ -138,6 +138,11 @@ description = "build a set around picked tracks: --pick \"<title or ID>\" ... [-
 dir = "{{cwd}}"
 run = "{{config_root}}/scripts/cli.sh build-set"
 
+[usb-check]
+description = "check that the cues on a USB device are still the collection's [/Volumes/<device>]"
+dir = "{{cwd}}"
+run = "{{config_root}}/scripts/cli.sh usb-check"
+
 [history]
 description = "list the play histories, or one history's tracks [\"<history>\"]"
 dir = "{{cwd}}"

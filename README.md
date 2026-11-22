@@ -64,6 +64,7 @@ mise run apply                       # dry run on a copy of master.db
 mise run apply --write               # QUIT REKORDBOX FIRST. Backs up master.db, then writes
 mise run demo                        # the generated demo set, end to end, without Rekordbox
 mise run build-set --pick "Jolene" --pick "Levels"   # a set around picked tracks (see below)
+mise run usb-check                   # tracks whose cues on a USB stick are out of date (see below)
 mise run history                     # play histories (after a gig: see below)
 mise run cue -- set --help           # mise keeps a bare --help for itself; pass it through `cue --`
 ```
@@ -139,7 +140,10 @@ before the outgoing track's end or avoids a vocal overlap; the report says so.
 Options: `plan --categories mik nohot auto` (or `mik,nohot,auto`) picks targets (see the track states below).
 `apply --only "Loleatta" "Trust Me"` limits a write. `--rb-dir` and `--work-dir` point at another library or cache.
 
-After writing, open Rekordbox and spot-check. Then re-export or sync your USB sticks.
+After writing, open Rekordbox and spot-check. Then refresh your USB sticks: Rekordbox's Sync Manager doesn't update the
+cues of tracks already on a stick, so plug it in and run `mise run usb-check`. It lists the tracks whose cues are out of
+date and the playlists that hold them. Right-click each of those in Rekordbox, **Export Playlist → the stick**, and
+**OK** to replace it ([ADR 0024](docs/decisions/0024-refresh-usb-devices-by-re-exporting.md)).
 
 ### Building a set around picked tracks
 

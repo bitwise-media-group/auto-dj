@@ -68,7 +68,9 @@ loops and memory cue colours) and can be verified before it replaces the live fi
   writes it, NULL columns left out, ISO timestamps), and `cue-sync` brings existing tracks in line. Confirmed on
   2026-11-15: after `cue-sync --write` (256 tracks), the EMERGENCY active loops activate on the CDJs.
 - New rows: random unused 32-bit `ID`, `UUID` uuid4, `ContentUUID` = track UUID, `usn`/`rb_local_usn` NULL (same as cues
-  Rekordbox itself creates locally), timestamps `YYYY-MM-DD HH:MM:SS.mmm +00:00`.
+  Rekordbox itself creates locally), timestamps `YYYY-MM-DD HH:MM:SS.mmm +00:00`. _2026-11-22:_ a USB device doesn't get
+  cue changes made with it unplugged until the track is exported afresh, whatever is marked in `master.db`; see
+  [0024](0024-refresh-usb-devices-by-re-exporting.md).
 - **`Kind 4` is not a hot cue pad.** Rekordbox doesn't show it on the pads (a track with an EMERGENCY loop stored as
   Kind 4 shows H as empty). Old layouts parked EMERGENCY loops there; the 2026-10-14 migration moved all of them to H.
   Never write Kind 4.

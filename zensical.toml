@@ -47,6 +47,7 @@ nav = [
     { "review" = "commands/review.md" },
     { "apply" = "commands/apply.md" },
     { "cue-sync" = "commands/cue-sync.md" },
+    { "usb-check" = "commands/usb-check.md" },
     { "set" = "commands/set.md" },
     { "build-set" = "commands/build-set.md" },
     { "history" = "commands/history.md" },
@@ -85,6 +86,7 @@ nav = [
     { "0021 Building sets around picks" = "decisions/0021-build-sets-around-picked-tracks.md" },
     { "0022 The cue template on every write" = "decisions/0022-cue-template-on-every-write.md" },
     { "0023 Graded endings, movable E/G" = "decisions/0023-graded-endings-and-movable-e-g.md" },
+    { "0024 Refreshing USB devices" = "decisions/0024-refresh-usb-devices-by-re-exporting.md" },
   ] },
 ]
 

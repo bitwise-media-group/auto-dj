@@ -26,6 +26,9 @@ and recordings 0016–0017. Record a new decision as the next-numbered ADR (see 
 - The rules keep numpy's arithmetic where cues depend on it (`Num` in `Sources/AutoDJKit/Num/Num.swift`: linear
   percentiles, pairwise float32 sums, round-half-even, first-wins argmin); keep using those helpers in rule code.
   Otherwise keep behaviour, not bytes: prefer Swift/Apple primitives over emulating the old Go/Python output.
+- USB sticks: Rekordbox's Sync Manager doesn't refresh the cues of tracks already on a stick (ADR 0024: marking
+  `master.db` rows was tested and doesn't help). The DJ re-exports the playlist (right-click > Export Playlist,
+  replace); `usb-check` lists what's out of date.
 - Never write to `master.db` while Rekordbox is running; `SafeWrite` enforces backup + checks. Never modify rated tracks
   or hot cue slots E/F/G, except what `set --write` does by user decision (ADRs 0009–0011): E/G, memory-cue
   renames/recolours/markers, and renaming `JUMP <label>` hot cues to `JUMP`.

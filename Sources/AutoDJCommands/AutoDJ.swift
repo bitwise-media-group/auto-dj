@@ -33,7 +33,7 @@ public struct AutoDJ: AsyncParsableCommand {
             """,
         subcommands: [
             Status.self, FeaturesCmd.self, EvaluateCmd.self, PlanCmd.self, ReviewCmd.self, ApplyCmd.self,
-            CueSyncCmd.self, SetCmd.self, BuildCmd.self,
+            CueSyncCmd.self, USBCheckCmd.self, SetCmd.self, BuildCmd.self,
             HistoryCmd.self, RecordingCmd.self, DemoCmd.self,
         ]
     )

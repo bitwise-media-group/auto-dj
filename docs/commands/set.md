@@ -73,6 +73,14 @@ The whole set plays at a fixed 128 BPM, every track time-stretched with its key 
 set; `--no-mix` skips `set.m4a`, `--format wav` renders WAV instead, and `--no-preview` skips the previews altogether.
 Hear the demo set's [preview](../demo/preview/index.html).
 
+## Getting the set onto a USB device
+
+Rekordbox's Sync Manager doesn't update the cues of tracks that are already on a USB device, so after `--write` the
+tracks a set changed keep their old cues there. Plug the device in and run [`usb-check`](usb-check.md): it lists them,
+and the playlists to refresh. Right-click each in Rekordbox, **Export Playlist → the device**, and **OK** to replace it:
+the changed tracks are exported again with the new cues
+([ADR 0024](../decisions/0024-refresh-usb-devices-by-re-exporting.md)).
+
 ## Flags
 
 | Flag                | Default                | Meaning                                                                      |
