@@ -8,7 +8,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/text v0.43.0
 	gonum.org/v1/gonum v0.17.0
-	modernc.org/sqlite v1.62.0
+	modernc.org/sqlite v1.63.0
 )
 
 require (
