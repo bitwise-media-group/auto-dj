@@ -24,4 +24,4 @@ permissions:
 
 jobs:
   analyze:
-    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@35d8e9a1ce772f67f97e73484dc5b7a50c29e0f3 # v8.1.1
+    uses: bitwise-media-group/github-workflows/.github/workflows/security.yaml@8227860743622e23d8ed2bc059841bedac2e668f # v8.5.0
